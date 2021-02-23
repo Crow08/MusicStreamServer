@@ -27,7 +27,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements WebM
 
   @Override
   public void configure(final WebSecurity web) {
-    web.ignoring().antMatchers(HttpMethod.OPTIONS);
+    web.ignoring().antMatchers(HttpMethod.OPTIONS).and().ignoring().antMatchers("/ws/**");
   }
 
   @Autowired
@@ -39,7 +39,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements WebM
   public void configure(final HttpSecurity http) throws Exception {
     http.cors().and()
         .authorizeRequests()
-        .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
         .anyRequest().fullyAuthenticated()
         .and()
         .httpBasic()
