@@ -1,5 +1,6 @@
 package de.crow08.musicstreamserver.song;
 
+import com.neverpile.urlcrypto.PreSignedUrlEnabled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -31,7 +32,7 @@ public class SongResource {
   public SongResource(SongRepository songRepository) {
     this.songRepository = songRepository;
   }
-  
+
   @GetMapping("/all")
   public @ResponseBody Iterable<Song> getSessions() {
     return songRepository.findAll();
@@ -43,6 +44,7 @@ public class SongResource {
   }
 
   @GetMapping("/{id}/data")
+  @PreSignedUrlEnabled
   public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable int id) throws FileNotFoundException {
     Optional<Song> song = this.songRepository.findById(id);
     if (song.isPresent()) {
