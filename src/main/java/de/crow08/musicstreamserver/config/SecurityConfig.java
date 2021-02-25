@@ -1,4 +1,4 @@
-package de.crow08.musicstreamserver;
+package de.crow08.musicstreamserver.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;

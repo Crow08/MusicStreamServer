@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.song;
 
 import com.neverpile.urlcrypto.PreSignedUrlEnabled;
-import de.crow08.musicstreamserver.TrimmedAudioInputStream;
+import de.crow08.musicstreamserver.utils.TrimmedAudioInputStream;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotReadException;
 import org.jaudiotagger.audio.exceptions.InvalidAudioFrameException;

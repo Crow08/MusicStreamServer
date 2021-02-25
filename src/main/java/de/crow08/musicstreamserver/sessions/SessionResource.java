@@ -1,6 +1,6 @@
 package de.crow08.musicstreamserver.sessions;
 
-import de.crow08.musicstreamserver.users.AuthenticatedUser;
+import de.crow08.musicstreamserver.authentication.AuthenticatedUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;

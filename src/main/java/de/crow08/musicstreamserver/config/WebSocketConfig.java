@@ -1,4 +1,4 @@
-package de.crow08.musicstreamserver;
+package de.crow08.musicstreamserver.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;

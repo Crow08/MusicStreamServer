@@ -1,4 +1,4 @@
-package de.crow08.musicstreamserver;
+package de.crow08.musicstreamserver.utils;
 
 import org.jaudiotagger.audio.mp3.MP3AudioHeader;
 

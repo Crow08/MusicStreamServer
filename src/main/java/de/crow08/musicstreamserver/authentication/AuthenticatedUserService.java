@@ -1,6 +1,5 @@
-package de.crow08.musicstreamserver;
+package de.crow08.musicstreamserver.authentication;
 
-import de.crow08.musicstreamserver.users.AuthenticatedUser;
 import de.crow08.musicstreamserver.users.User;
 import de.crow08.musicstreamserver.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;

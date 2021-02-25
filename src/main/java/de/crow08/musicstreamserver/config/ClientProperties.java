@@ -1,9 +1,9 @@
-package de.crow08.musicstreamserver;
+package de.crow08.musicstreamserver.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "client")
-public class ClientConfiguration {
+public class ClientProperties {
   private String host;
   private int port;
 
