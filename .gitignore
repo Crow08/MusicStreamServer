@@ -30,3 +30,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### test music ###
+*.falc
+*.m3u
+*.m4a
+*.mp3
+*.ogg
+*.wav
+*.wma
