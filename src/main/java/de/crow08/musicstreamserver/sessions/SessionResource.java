@@ -25,7 +25,7 @@ public class SessionResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<MusicSession> getSession(@PathVariable int id) {
+  public @ResponseBody Optional<MusicSession> getSession(@PathVariable String id) {
     return sessionRepository.findById(id);
   }
 

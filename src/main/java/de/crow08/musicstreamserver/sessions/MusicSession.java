@@ -1,24 +1,24 @@
 package de.crow08.musicstreamserver.sessions;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
+import de.crow08.musicstreamserver.song.Song;
+
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
-@Entity
 public class MusicSession {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
   private UUID id;
 
-  @Column(nullable = false)
   private String host;
 
-  @Column(nullable = false)
   private String name;
+
+  private Song currentSong;
+
+  private Instant songStartedTime;
 
   public MusicSession() {
   }
@@ -50,5 +50,16 @@ public class MusicSession {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public Optional<Song> getCurrentSong() {
+    return Optional.ofNullable(currentSong);
+  }
+
+  public Optional<Instant> getcurrentSongStartedTime() {
+    return Optional.ofNullable(songStartedTime);
+  }
+
+  public void nextSong() {
   }
 }
