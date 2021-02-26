@@ -49,13 +49,13 @@ public class SongResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<Song> getSong(@PathVariable int id) {
+  public @ResponseBody Optional<Song> getSong(@PathVariable String id) {
     return songRepository.findById(id);
   }
 
   @GetMapping("/{id}/data")
   @PreSignedUrlEnabled
-  public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable int id) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
+  public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
     Optional<Song> song = this.songRepository.findById(id);
     if (song.isPresent()) {
       File origFile = ResourceUtils.getFile("classpath:" + song.get().getPath());

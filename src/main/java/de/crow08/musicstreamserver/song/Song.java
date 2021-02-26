@@ -11,15 +11,15 @@ import java.util.UUID;
 public class Song {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.SEQUENCE)
-  private int id;
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  private UUID id;
 
   @Column(nullable = false)
   private String title;
 
   @Column(nullable = true)
   private String artist;
-  
+
   @Column(nullable = false)
   private String path;
 
@@ -32,11 +32,11 @@ public class Song {
     this.path = path;
   }
 
-  public int getId() {
+  public UUID getId() {
     return id;
   }
 
-  public void setId(int id) {
+  public void setId(UUID id) {
     this.id = id;
   }
 
@@ -63,5 +63,5 @@ public class Song {
   public void setPath(String path) {
     this.path = path;
   }
-  
+
 }
