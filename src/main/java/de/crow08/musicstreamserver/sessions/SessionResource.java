@@ -29,7 +29,7 @@ public class SessionResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<MusicSession> getSession(@PathVariable String id) {
+  public @ResponseBody Optional<MusicSession> getSession(@PathVariable long id) {
     return sessionRepository.findById(id);
   }
 
@@ -39,15 +39,15 @@ public class SessionResource {
   }
 
   @PutMapping(path = "/")
-  public @ResponseBody String creatNewSession(@RequestBody String name) {
+  public @ResponseBody long creatNewSession(@RequestBody String name) {
     AuthenticatedUser user = ((AuthenticatedUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
     MusicSession session = new MusicSession(user.getUsername(), name);
     sessionRepository.save(session);
-    return session.getId().toString();
+    return session.getId();
   }
 
   @PutMapping(path = "/{sessionId}/addpl")
-  public @ResponseBody String creatNewSession(@PathVariable String sessionId, @RequestBody String playlistId) {
+  public @ResponseBody String creatNewSession(@PathVariable long sessionId, @RequestBody long playlistId) {
     Optional<MusicSession> session = sessionRepository.findById(sessionId);
     Optional<Playlist> playlist = playlistRepository.findById(playlistId);
     if(session.isPresent() && playlist.isPresent()){

@@ -1,10 +1,10 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
 public class StartCommand extends Command{
-  String songId;
+  long songId;
   long time;
 
-  public StartCommand(String songId, long time) {
+  public StartCommand(long songId, long time) {
     super("Start");
     this.songId = songId;
     this.time = time;
@@ -14,11 +14,11 @@ public class StartCommand extends Command{
     super("Start");
   }
 
-  public String getSongId() {
+  public long getSongId() {
     return songId;
   }
 
-  public void setSongId(String songId) {
+  public void setSongId(long songId) {
     this.songId = songId;
   }
 

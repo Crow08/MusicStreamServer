@@ -29,7 +29,7 @@ public class PlaylistResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<Playlist> getSong(@PathVariable String id) {
+  public @ResponseBody Optional<Playlist> getSong(@PathVariable long id) {
     return playlistRepository.findById(id);
   }
 

@@ -1,10 +1,10 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
 public class SkipCommand extends Command{
-  String songId;
+  long songId;
   long time;
 
-  public SkipCommand(String songId, long time) {
+  public SkipCommand(long songId, long time) {
     super("Skip");
     this.songId = songId;
     this.time = time;
@@ -14,11 +14,11 @@ public class SkipCommand extends Command{
     super("Skip");
   }
 
-  public String getSongId() {
+  public long getSongId() {
     return songId;
   }
 
-  public void setSongId(String songId) {
+  public void setSongId(long songId) {
     this.songId = songId;
   }
 

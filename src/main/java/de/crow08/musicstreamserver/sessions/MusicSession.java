@@ -13,7 +13,7 @@ import java.util.UUID;
 
 public class MusicSession {
 
-  private UUID id;
+  private long id;
 
   private String host;
 
@@ -36,11 +36,11 @@ public class MusicSession {
     queue = new Queue(playlist);
   }
 
-  public UUID getId() {
+  public long getId() {
     return id;
   }
 
-  public void setId(UUID id) {
+  public void setId(long id) {
     this.id = id;
   }
 

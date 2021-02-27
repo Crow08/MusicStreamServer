@@ -11,8 +11,8 @@ import java.util.UUID;
 public class User {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
-  private UUID id;
+  @GeneratedValue
+  private long id;
 
   @Column(nullable = false, unique = true)
   private String username;
@@ -28,11 +28,11 @@ public class User {
     this.password = password;
   }
 
-  public UUID getId() {
+  public long getId() {
     return id;
   }
 
-  public void setId(UUID id) {
+  public void setId(long id) {
     this.id = id;
   }
 

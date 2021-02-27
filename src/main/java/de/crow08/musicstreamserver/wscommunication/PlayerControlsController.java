@@ -28,13 +28,13 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/start")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command start(@DestinationVariable String sessionId, String message) throws Exception {
+  public Command start(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
     if(sessionRepository.findById(sessionId).isPresent()) {
       MusicSession session = sessionRepository.findById(sessionId).get();
       long startTime = Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli();
       if(session.getCurrentSong().isPresent()){
-        String songId = session.getCurrentSong().get().getId().toString();
+        long songId = session.getCurrentSong().get().getId();
         return new StartCommand(songId, startTime);
       }
       throw new Exception("No current song");
@@ -45,7 +45,7 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/pause")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command pause(@DestinationVariable String sessionId, String message) throws Exception {
+  public Command pause(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
     if(sessionRepository.findById(sessionId).isPresent()){
       MusicSession session = sessionRepository.findById(sessionId).get();
@@ -60,7 +60,7 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/resume")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command resume(@DestinationVariable String sessionId, String message) throws Exception {
+  public Command resume(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
     if(sessionRepository.findById(sessionId).isPresent()){
       long startTime = Instant.now().plus(2, ChronoUnit.SECONDS).toEpochMilli();
@@ -71,7 +71,7 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/stop")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command stop(@DestinationVariable String sessionId, String message) throws Exception {
+  public Command stop(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
     if(sessionRepository.findById(sessionId).isPresent()){
       return new StopCommand();
@@ -81,14 +81,14 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/skip")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command skip(@DestinationVariable String sessionId, String message) throws Exception {
+  public Command skip(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
     if(sessionRepository.findById(sessionId).isPresent()) {
       MusicSession session = sessionRepository.findById(sessionId).get();
       session.nextSong();
       long startTime = Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli();
       if(session.getCurrentSong().isPresent()){
-        String songId = session.getCurrentSong().get().getId().toString();
+        long songId = session.getCurrentSong().get().getId();
         return new SkipCommand(songId, startTime);
       }
       throw new Exception("No current song");
