@@ -1,10 +1,14 @@
 package de.crow08.musicstreamserver.song;
 
+import de.crow08.musicstreamserver.playlists.Playlist;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToMany;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -22,6 +26,9 @@ public class Song {
 
   @Column(nullable = false)
   private String path;
+
+  @ManyToMany(mappedBy ="songs")
+  private List<Playlist> playlists;
 
   public Song() {
   }
@@ -64,4 +71,11 @@ public class Song {
     this.path = path;
   }
 
+  public List<Playlist> getPlaylists() {
+    return playlists;
+  }
+
+  public void setPlaylists(List<Playlist> playlists) {
+    this.playlists = playlists;
+  }
 }

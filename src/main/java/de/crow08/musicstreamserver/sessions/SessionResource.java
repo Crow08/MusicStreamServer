@@ -1,6 +1,8 @@
 package de.crow08.musicstreamserver.sessions;
 
 import de.crow08.musicstreamserver.authentication.AuthenticatedUser;
+import de.crow08.musicstreamserver.playlists.Playlist;
+import de.crow08.musicstreamserver.playlists.PlaylistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,10 +20,12 @@ import java.util.Optional;
 public class SessionResource {
 
   private final SessionRepository sessionRepository;
+  private final PlaylistRepository playlistRepository;
 
   @Autowired
-  public SessionResource(SessionRepository sessionRepository) {
+  public SessionResource(SessionRepository sessionRepository, PlaylistRepository playlistRepository) {
     this.sessionRepository = sessionRepository;
+    this.playlistRepository = playlistRepository;
   }
 
   @GetMapping("/{id}")
@@ -40,5 +44,15 @@ public class SessionResource {
     MusicSession session = new MusicSession(user.getUsername(), name);
     sessionRepository.save(session);
     return session.getId().toString();
+  }
+
+  @PutMapping(path = "/{sessionId}/addpl")
+  public @ResponseBody String creatNewSession(@PathVariable String sessionId, @RequestBody String playlistId) {
+    Optional<MusicSession> session = sessionRepository.findById(sessionId);
+    Optional<Playlist> playlist = playlistRepository.findById(playlistId);
+    if(session.isPresent() && playlist.isPresent()){
+      session.get().addSongs(playlist.get().getSongs());
+    }
+    return "OK";
   }
 }
