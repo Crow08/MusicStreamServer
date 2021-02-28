@@ -29,8 +29,8 @@ public class SessionResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<MusicSession> getSession(@PathVariable long id) {
-    return sessionRepository.findById(id);
+  public @ResponseBody Optional<MusicSession> getSession(@PathVariable String id) {
+    return sessionRepository.findById(Long.parseLong(id));
   }
 
   @GetMapping("/all")
@@ -47,9 +47,9 @@ public class SessionResource {
   }
 
   @PutMapping(path = "/{sessionId}/addpl")
-  public @ResponseBody String creatNewSession(@PathVariable long sessionId, @RequestBody long playlistId) {
-    Optional<MusicSession> session = sessionRepository.findById(sessionId);
-    Optional<Playlist> playlist = playlistRepository.findById(playlistId);
+  public @ResponseBody String creatNewSession(@PathVariable String sessionId, @RequestBody String playlistId) {
+    Optional<MusicSession> session = sessionRepository.findById(Long.parseLong(sessionId));
+    Optional<Playlist> playlist = playlistRepository.findById(Long.parseLong(playlistId));
     if(session.isPresent() && playlist.isPresent()){
       session.get().addSongs(playlist.get().getSongs());
     }

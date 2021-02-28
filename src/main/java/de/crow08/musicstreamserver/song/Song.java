@@ -1,6 +1,8 @@
 package de.crow08.musicstreamserver.song;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import de.crow08.musicstreamserver.playlists.Playlist;
+import org.springframework.context.annotation.Lazy;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -28,6 +30,8 @@ public class Song {
   private String path;
 
   @ManyToMany(mappedBy ="songs")
+  @Lazy
+  @JsonIgnore
   private List<Playlist> playlists;
 
   public Song() {
@@ -71,10 +75,12 @@ public class Song {
     this.path = path;
   }
 
+  @JsonIgnore
   public List<Playlist> getPlaylists() {
     return playlists;
   }
 
+  @JsonIgnore
   public void setPlaylists(List<Playlist> playlists) {
     this.playlists = playlists;
   }

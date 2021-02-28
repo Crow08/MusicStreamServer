@@ -49,29 +49,30 @@ public class SongResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<Song> getSong(@PathVariable long id) {
-    return songRepository.findById(id);
+  public @ResponseBody Optional<Song> getSong(@PathVariable String id) {
+    return songRepository.findById(Long.parseLong(id));
   }
 
-  @GetMapping("/{id}/data")
+  @GetMapping("/{id}/data/{offset}")
   @PreSignedUrlEnabled
-  public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable long id) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
-    Optional<Song> song = this.songRepository.findById(id);
+  public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id, @PathVariable String offset) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
+    Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
+    long offsetMillis = Long.parseLong(offset);
     if (song.isPresent()) {
       File origFile = ResourceUtils.getFile("classpath:" + song.get().getPath());
       File outFile;
       if (song.get().getPath().endsWith(".wav")) {
-        outFile = cutWaveFile(origFile, 60000);
+        outFile = cutWaveFile(origFile, offsetMillis);
       } else if (song.get().getPath().endsWith(".mp3")) {
-        outFile = cutMP3File(origFile, 60000);
+        outFile = cutMP3File(origFile, offsetMillis);
       } else {
-        outFile = origFile;
+        return new ResponseEntity<>(HttpStatus.UNPROCESSABLE_ENTITY);
       }
       InputStreamResource stream = new InputStreamResource(new FileInputStream(outFile));
 
       return ResponseEntity.ok()
           .contentLength(outFile.length())
-          .contentType(MediaType.APPLICATION_OCTET_STREAM)
+          .contentType(MediaType.valueOf("audio/mpeg"))
           .header("Accept-Ranges", "bytes")
           .body(stream);
     } else {
@@ -79,7 +80,24 @@ public class SongResource {
     }
   }
 
-  private File cutMP3File(File origFile, int start) throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException, UnsupportedAudioFileException {
+  @GetMapping("/{id}/data/")
+  @PreSignedUrlEnabled
+  public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
+    Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
+    if (song.isPresent()) {
+      File origFile = ResourceUtils.getFile("classpath:" + song.get().getPath());
+      InputStreamResource stream = new InputStreamResource(new FileInputStream(origFile));
+      return ResponseEntity.ok()
+          .contentLength(origFile.length())
+          .contentType(MediaType.valueOf("audio/mpeg"))
+          .header("Accept-Ranges", "bytes")
+          .body(stream);
+    } else {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+  }
+
+  private File cutMP3File(File origFile, long start) throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException, UnsupportedAudioFileException {
     File outFile;
     MP3File f = (MP3File) AudioFileIO.read(origFile);
     AudioInputStream fullSong = AudioSystem.getAudioInputStream(origFile);
@@ -92,7 +110,7 @@ public class SongResource {
     return outFile;
   }
 
-  private File cutWaveFile(File origFile, int start) throws UnsupportedAudioFileException, IOException {
+  private File cutWaveFile(File origFile, long start) throws UnsupportedAudioFileException, IOException {
     File outFile;
     AudioInputStream fullSong = AudioSystem.getAudioInputStream(origFile);
     AudioInputStream trimmedSong = new TrimmedAudioInputStream(fullSong, start);

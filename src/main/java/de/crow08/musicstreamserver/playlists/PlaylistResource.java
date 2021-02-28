@@ -13,7 +13,7 @@ import javax.persistence.ManyToOne;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/playlist")
+@RequestMapping("/playlists")
 public class PlaylistResource {
 
   private final PlaylistRepository playlistRepository;
@@ -29,8 +29,8 @@ public class PlaylistResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<Playlist> getSong(@PathVariable long id) {
-    return playlistRepository.findById(id);
+  public @ResponseBody Optional<Playlist> getSong(@PathVariable String id) {
+    return playlistRepository.findById(Long.parseLong(id));
   }
 
 }
