@@ -80,7 +80,7 @@ public class SongResource {
     }
   }
 
-  @GetMapping("/{id}/data/")
+  @GetMapping("/{id}/data")
   @PreSignedUrlEnabled
   public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));

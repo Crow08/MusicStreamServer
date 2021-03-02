@@ -25,7 +25,6 @@ public class TrimmedAudioInputStream extends AudioInputStream {
     super(new ByteArrayInputStream(new byte[0]), audioInputStream.getFormat(), AudioSystem.NOT_SPECIFIED);
     stream = audioInputStream;
     //calculate where to start and where to end
-    System.out.println("144 *" + mp3AudioHeader.getBitRateAsNumber() + "/" + mp3AudioHeader.getSampleRateAsNumber() + "+1");
     long calcFrameSize = (144 * (mp3AudioHeader.getBitRateAsNumber() * 1000) / mp3AudioHeader.getSampleRateAsNumber() + 1);
     prefixBytes = mp3AudioHeader.getMp3StartByte();
     startByte = (long) ((startMilli / 1000) * stream.getFormat().getFrameRate() * calcFrameSize);
