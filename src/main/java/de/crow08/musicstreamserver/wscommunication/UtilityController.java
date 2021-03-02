@@ -9,11 +9,10 @@ import java.time.Instant;
 @Controller
 public class UtilityController {
 
-  @MessageMapping("/util/latency")
-  @SendTo("/topic/util/latency")
-  public String play(String message) {
+  @MessageMapping("/util/latency/{user}")
+  @SendTo("/topic/util/latency/{user}")
+  public String ping(String message) {
     System.out.println("Recieved: " + message);
-
     return String.valueOf(Instant.now().toEpochMilli());
   }
 }
