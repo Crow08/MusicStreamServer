@@ -1,9 +1,11 @@
 package de.crow08.musicstreamserver.wscommunication;
 
-import de.crow08.musicstreamserver.sessions.MusicSession;
+import de.crow08.musicstreamserver.sessions.Session;
+import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
 import de.crow08.musicstreamserver.song.Song;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
+import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.PauseCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.ResumeCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.SkipCommand;
@@ -22,84 +24,84 @@ import java.util.Optional;
 public class PlayerControlsController {
 
   final SessionRepository sessionRepository;
+  final SessionController sessionController;
 
-  public PlayerControlsController(SessionRepository sessionRepository) {
+  public PlayerControlsController(SessionRepository sessionRepository, SessionController sessionController) {
     this.sessionRepository = sessionRepository;
+    this.sessionController = sessionController;
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/start")
   @SendTo("/topic/sessions/{sessionId}")
   public Command start(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
-    if (sessionRepository.findById(sessionId).isPresent()) {
-      MusicSession session = sessionRepository.findById(sessionId).get();
-      Instant startTime = Instant.now().plus(1, ChronoUnit.SECONDS);
-      Optional<Song> currentSong = session.getCurrentSong();
-      if (currentSong.isPresent()) {
-        long songId = currentSong.get().getId();
-        session.setState(MusicSession.SessionState.PLAY);
-        return new StartCommand(songId, startTime.toEpochMilli());
-      }
-      return new StopCommand();
-
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    Optional<Song> currentSong = sessionController.getCurrentSong(session);
+    if (currentSong.isPresent()) {
+      long songId = currentSong.get().getId();
+      sessionController.start(session);
+      return new StartCommand(songId, Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli());
     }
-    throw new Exception("Session not found");
+    return new StopCommand();
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/pause")
   @SendTo("/topic/sessions/{sessionId}")
   public Command pause(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
-    if (sessionRepository.findById(sessionId).isPresent()) {
-      MusicSession session = sessionRepository.findById(sessionId).get();
-      long pausePosition = session.getSongStartOffset().toMillis();
-      session.setState(MusicSession.SessionState.PAUSE);
-      return new PauseCommand(pausePosition);
-    }
-    throw new Exception("Session not found");
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    long pausePosition = sessionController.getSongStartOffset(session).toMillis();
+    sessionController.pause(session);
+    return new PauseCommand(pausePosition);
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/resume")
   @SendTo("/topic/sessions/{sessionId}")
   public Command resume(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
-    if (sessionRepository.findById(sessionId).isPresent()) {
-      MusicSession session = sessionRepository.findById(sessionId).get();
-      Instant startTime = Instant.now().plus(1, ChronoUnit.SECONDS);
-      session.setState(MusicSession.SessionState.PLAY);
-      return new ResumeCommand(startTime.toEpochMilli());
-    }
-    throw new Exception("Session not found");
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    sessionController.resume(session);
+    return new ResumeCommand(Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli());
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/stop")
   @SendTo("/topic/sessions/{sessionId}")
   public Command stop(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
-    if (sessionRepository.findById(sessionId).isPresent()) {
-      MusicSession session = sessionRepository.findById(sessionId).get();
-      session.setState(MusicSession.SessionState.STOP);
-      return new StopCommand();
-    }
-    throw new Exception("Session not found");
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    sessionController.stop(session);
+    return new StopCommand();
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/skip")
   @SendTo("/topic/sessions/{sessionId}")
   public Command skip(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
-    if (sessionRepository.findById(sessionId).isPresent()) {
-      MusicSession session = sessionRepository.findById(sessionId).get();
-      session.nextSong();
-      long startTime = Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli();
-      Optional<Song> currentSong = session.getCurrentSong();
-      if (currentSong.isPresent()) {
-        long songId = currentSong.get().getId();
-        session.setState(MusicSession.SessionState.PLAY);
-        return new SkipCommand(songId, startTime);
-      }
-      return new StopCommand();
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    sessionController.nextSong(session);
+    Optional<Song> currentSong = sessionController.getCurrentSong(session);
+    if (currentSong.isPresent()) {
+      long songId = currentSong.get().getId();
+      sessionController.skip(session);
+      return new SkipCommand(songId, Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli());
     }
-    throw new Exception("Session not found");
+    return new StopCommand();
+  }
+
+  @MessageMapping("/sessions/{sessionId}/commands/join/{userId}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command join(@DestinationVariable long sessionId, @DestinationVariable long userId, String message) throws Exception {
+    System.out.println("Recieved: " + sessionId + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    Optional<Song> currentSong = sessionController.getCurrentSong(session);
+    long songId = -1;
+    if (currentSong.isPresent()) {
+      songId = currentSong.get().getId();
+    }
+
+    long startOffset = sessionController.getSongStartOffset(session).plus(1, ChronoUnit.SECONDS).toMillis();
+    long startTime = Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli();
+
+    return new JoinCommand(songId, startTime, startOffset, session.getSessionState(), userId);
   }
 }

@@ -6,26 +6,26 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class SessionRepository implements Repository<MusicSession, Long> {
+public class SessionRepository implements Repository<Session, Long> {
 
   private long idSequencer = 1;
 
-  private Map<Long, MusicSession> repo = new HashMap<>();
+  private Map<Long, Session> repo = new HashMap<>();
 
-  public Optional<MusicSession> findById(long id) {
+  public Optional<Session> findById(long id) {
     return Optional.ofNullable(repo.get(id));
   }
 
-  public void save(MusicSession session) {
+  public void save(Session session) {
     long sessionId = getSessionId(session);
     repo.put(sessionId, session);
   }
 
-  public Iterable<MusicSession> findAll() {
+  public Iterable<Session> findAll() {
     return repo.values();
   }
 
-  private long getSessionId(MusicSession session) {
+  private long getSessionId(Session session) {
     long sessionId = session.getId();
     if(sessionId == 0) {
       sessionId = idSequencer++;
