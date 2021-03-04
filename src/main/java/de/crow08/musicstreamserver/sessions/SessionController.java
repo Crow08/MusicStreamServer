@@ -10,19 +10,34 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Controller for sessions to manage session states and move songs and other data while the session is being worked with.
+ * User command should be working with this controller to modify data instead of accessing the session directly.
+ */
 @Controller
 public class SessionController {
 
+  public final static long SYNC_DELAY = 1000;
 
-
+  /**
+   * Gets the current song being played. If no song is being played {@link #nextSong(Session)} is called
+   * automatically to move a song in the current position.
+   * @param session to get the song for.
+   * @return the current song.
+   */
   public Optional<Song> getCurrentSong(Session session) {
     if (session.getQueue().getCurrentSong() == null) {
       this.nextSong(session);
     }
     return Optional.ofNullable(session.getQueue().getCurrentSong());
-
   }
 
+  /**
+   * Gets the time the song has been played for. This time excludes pauses.
+   * If the song is currently playing this represents a snapshot of the time at the moment of execution.
+   * @param session the session of the song to get the offset for.
+   * @return the duration of the elapsed time of the current song.
+   */
   public Duration getSongStartOffset(Session session) {
     Duration duration = Duration.ZERO;
     if (session.getSongStarted() != null) {
@@ -34,6 +49,11 @@ public class SessionController {
     return duration;
   }
 
+  /**
+   * This is a macro function which tries to move the next song in the queue to the current song while
+   * adding the old current song to the history.
+   * @param session for with to move to the next song
+   */
   public void nextSong(Session session) {
     Queue queue = session.getQueue();
     Song currentSong = queue.getCurrentSong();
@@ -46,41 +66,77 @@ public class SessionController {
     } else {
       queue.setCurrentSong(null);
     }
-    session.setSavedProgression(Duration.ZERO);
   }
+
+  /**
+   * Adds a list of songs to the end of the queue of the session
+   * @param session for the songs to be added to
+   * @param songs list of new songs
+   */
 
   public void addSongs(Session session, List<Song> songs) {
     session.getQueue().getQueuedSongs().addAll(songs);
   }
 
-  public void start(Session session) {
-    session.setSongStarted(Instant.now().plus(1, ChronoUnit.SECONDS));
+  /**
+   * Marks the start of a song. This resets the time played of the previous song.
+   * The Song is planned to start within the given {@value #SYNC_DELAY}.
+   * @param session for which the song starts playing.
+   * @return server time of the song start.
+   */
+  public Instant start(Session session) {
+    session.setSongStarted(Instant.now().plus(SYNC_DELAY, ChronoUnit.MILLIS));
     session.setSavedProgression(Duration.ZERO);
     session.setSessionState(Session.SessionState.PLAY);
+    return session.getSongStarted();
   }
 
-  public void pause(Session session) {
+  /**
+   * Marks the song as paused and saves the progression time since the last resume or start of this song.
+   * the current start time will be nulled.
+   * @param session for which the song is being paused.
+   * @return the total accumulated time across all pauses and resumes this song has been played for.
+   */
+  public Duration pause(Session session) {
     Instant now = Instant.now();
     if(session.getSongStarted() != null) {
       session.setSavedProgression(session.getSavedProgression().plus(Duration.between(session.getSongStarted(), now)));
     }
     session.setSongStarted(null);
     session.setSessionState(Session.SessionState.PAUSE);
+    return this.getSongStartOffset(session);
   }
 
-  public void resume(Session session) {
+  /**
+   * Marks this song as resumed and defines a new start time.
+   * The Song is planned to start within the given {@value #SYNC_DELAY}.
+   * @param session for which the song is being resumed.
+   * @return server time of the song start.
+   */
+  public Instant resume(Session session) {
     Instant now = Instant.now();
-    session.setSongStarted(now.plus(1, ChronoUnit.SECONDS));
+    session.setSongStarted(now.plus(SYNC_DELAY, ChronoUnit.MILLIS));
     session.setSessionState(Session.SessionState.PLAY);
+    return session.getSongStarted();
   }
 
+  /**
+   * Marks the current Song as stopped deleting all process and the start time.
+   * @param session for which the song is being stopped.
+   */
   public void stop(Session session) {
     session.setSavedProgression(Duration.ZERO);
     session.setSongStarted(null);
     session.setSessionState(Session.SessionState.STOP);
   }
 
-  public void skip(Session session) {
-    this.start(session);
+  /**
+   * When marking a song as skipped the next song is automatically marked as played and therefore the behaviour
+   * is identical to {@link #start(Session)}
+   * @param session for which the song is beeing skipped on
+   * @return server time of the next song start.
+   */
+  public Instant skip(Session session) {
+    return this.start(session);
   }
 }

@@ -39,8 +39,8 @@ public class PlayerControlsController {
     Optional<Song> currentSong = sessionController.getCurrentSong(session);
     if (currentSong.isPresent()) {
       long songId = currentSong.get().getId();
-      sessionController.start(session);
-      return new StartCommand(songId, Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli());
+      long startTime = sessionController.start(session).toEpochMilli();
+      return new StartCommand(songId, startTime);
     }
     return new StopCommand();
   }
@@ -50,8 +50,7 @@ public class PlayerControlsController {
   public Command pause(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    long pausePosition = sessionController.getSongStartOffset(session).toMillis();
-    sessionController.pause(session);
+    long pausePosition = sessionController.pause(session).toMillis();
     return new PauseCommand(pausePosition);
   }
 
@@ -60,8 +59,8 @@ public class PlayerControlsController {
   public Command resume(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Recieved: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    sessionController.resume(session);
-    return new ResumeCommand(Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli());
+    long startTime = sessionController.resume(session).toEpochMilli();
+    return new ResumeCommand(startTime);
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/stop")
@@ -82,8 +81,8 @@ public class PlayerControlsController {
     Optional<Song> currentSong = sessionController.getCurrentSong(session);
     if (currentSong.isPresent()) {
       long songId = currentSong.get().getId();
-      sessionController.skip(session);
-      return new SkipCommand(songId, Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli());
+      long startTime = sessionController.skip(session).toEpochMilli();
+      return new SkipCommand(songId, startTime);
     }
     return new StopCommand();
   }
@@ -98,10 +97,8 @@ public class PlayerControlsController {
     if (currentSong.isPresent()) {
       songId = currentSong.get().getId();
     }
-
-    long startOffset = sessionController.getSongStartOffset(session).plus(1, ChronoUnit.SECONDS).toMillis();
-    long startTime = Instant.now().plus(1, ChronoUnit.SECONDS).toEpochMilli();
-
+    long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
+    long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
     return new JoinCommand(songId, startTime, startOffset, session.getSessionState(), userId);
   }
 }
