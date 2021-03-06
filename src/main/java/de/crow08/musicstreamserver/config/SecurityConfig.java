@@ -18,6 +18,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class SecurityConfig extends WebSecurityConfigurerAdapter implements WebMvcConfigurer {
 
   private final UserDetailsService userDetailsService;
+  @Value("${client.host}")
+  private String host;
+  @Value("${client.port}")
+  private int port;
 
   @Autowired
   public SecurityConfig(@Qualifier("authenticatedUserService") UserDetailsService userDetailsService) {
@@ -45,12 +49,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements WebM
         .and()
         .csrf().disable();
   }
-
-  @Value("${client.host}")
-  private String host;
-
-  @Value("${client.port}")
-  private int port;
 
   @Override
   public void addCorsMappings(CorsRegistry registry) {

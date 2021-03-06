@@ -7,6 +7,7 @@ import org.springframework.stereotype.Controller;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +23,7 @@ public class SessionController {
   /**
    * Gets the current song being played. If no song is being played {@link #nextSong(Session)} is called
    * automatically to move a song in the current position.
+   *
    * @param session to get the song for.
    * @return the current song.
    */
@@ -35,6 +37,7 @@ public class SessionController {
   /**
    * Gets the time the song has been played for. This time excludes pauses.
    * If the song is currently playing this represents a snapshot of the time at the moment of execution.
+   *
    * @param session the session of the song to get the offset for.
    * @return the duration of the elapsed time of the current song.
    */
@@ -52,6 +55,7 @@ public class SessionController {
   /**
    * This is a macro function which tries to move the next song in the queue to the current song while
    * adding the old current song to the history.
+   *
    * @param session for with to move to the next song
    */
   public void nextSong(Session session) {
@@ -69,9 +73,30 @@ public class SessionController {
   }
 
   /**
+   * This is a macro function which tries to place the latest song in the history in the current position.
+   * The currently played song will be pushed on top of the queue.
+   *
+   * @param session for with to move to the next song
+   */
+  public void previousSong(Session session) {
+    Queue queue = session.getQueue();
+    Song currentSong = queue.getCurrentSong();
+    if (currentSong != null) {
+      queue.getQueuedSongs().add(0, currentSong);
+    }
+    if (queue.getHistorySongs().size() > 0) {
+      queue.setCurrentSong(queue.getHistorySongs().get(0));
+      queue.getHistorySongs().remove(0);
+    } else {
+      queue.setCurrentSong(null);
+    }
+  }
+
+  /**
    * Adds a list of songs to the end of the queue of the session
+   *
    * @param session for the songs to be added to
-   * @param songs list of new songs
+   * @param songs   list of new songs
    */
 
   public void addSongs(Session session, List<Song> songs) {
@@ -81,6 +106,7 @@ public class SessionController {
   /**
    * Marks the start of a song. This resets the time played of the previous song.
    * The Song is planned to start within the given {@value #SYNC_DELAY}.
+   *
    * @param session for which the song starts playing.
    * @return server time of the song start.
    */
@@ -94,12 +120,13 @@ public class SessionController {
   /**
    * Marks the song as paused and saves the progression time since the last resume or start of this song.
    * the current start time will be nulled.
+   *
    * @param session for which the song is being paused.
    * @return the total accumulated time across all pauses and resumes this song has been played for.
    */
   public Duration pause(Session session) {
     Instant now = Instant.now();
-    if(session.getSongStarted() != null) {
+    if (session.getSongStarted() != null) {
       session.setSavedProgression(session.getSavedProgression().plus(Duration.between(session.getSongStarted(), now)));
     }
     session.setSongStarted(null);
@@ -110,6 +137,7 @@ public class SessionController {
   /**
    * Marks this song as resumed and defines a new start time.
    * The Song is planned to start within the given {@value #SYNC_DELAY}.
+   *
    * @param session for which the song is being resumed.
    * @return server time of the song start.
    */
@@ -122,6 +150,7 @@ public class SessionController {
 
   /**
    * Marks the current Song as stopped deleting all process and the start time.
+   *
    * @param session for which the song is being stopped.
    */
   public void stop(Session session) {
@@ -131,12 +160,11 @@ public class SessionController {
   }
 
   /**
-   * When marking a song as skipped the next song is automatically marked as played and therefore the behaviour
-   * is identical to {@link #start(Session)}
-   * @param session for which the song is beeing skipped on
-   * @return server time of the next song start.
+   * Shuffles the current Queue.
+   *
+   * @param session for which the queue is shuffled for.
    */
-  public Instant skip(Session session) {
-    return this.start(session);
+  public void shuffleQueue(Session session) {
+    Collections.shuffle(session.getQueue().getQueuedSongs());
   }
 }

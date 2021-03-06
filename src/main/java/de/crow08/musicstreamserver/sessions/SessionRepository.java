@@ -10,7 +10,7 @@ public class SessionRepository implements Repository<Session, Long> {
 
   private long idSequencer = 1;
 
-  private Map<Long, Session> repo = new HashMap<>();
+  private final Map<Long, Session> repo = new HashMap<>();
 
   public Optional<Session> findById(long id) {
     return Optional.ofNullable(repo.get(id));
@@ -27,10 +27,10 @@ public class SessionRepository implements Repository<Session, Long> {
 
   private long getSessionId(Session session) {
     long sessionId = session.getId();
-    if(sessionId == 0) {
+    if (sessionId == 0) {
       sessionId = idSequencer++;
       session.setId(sessionId);
-    } else if(sessionId >= idSequencer){
+    } else if (sessionId >= idSequencer) {
       idSequencer = sessionId + 1;
     }
     return sessionId;

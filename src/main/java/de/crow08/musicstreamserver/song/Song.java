@@ -7,11 +7,9 @@ import org.springframework.context.annotation.Lazy;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToMany;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 public class Song {
@@ -29,7 +27,7 @@ public class Song {
   @Column(nullable = false)
   private String path;
 
-  @ManyToMany(mappedBy ="songs")
+  @ManyToMany(mappedBy = "songs")
   @Lazy
   @JsonIgnore
   private List<Playlist> playlists;

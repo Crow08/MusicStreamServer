@@ -8,23 +8,14 @@ import java.time.Instant;
 
 public class Session {
 
-  public enum SessionState {
-    PLAY, STOP, PAUSE
-  }
-
   private long id;
-
   private String host;
-
   private String name;
-
   private SessionState sessionState = SessionState.STOP;
-
   private Instant songStarted = null;
-
   private Duration savedProgression = Duration.ZERO;
-
-  private Queue queue = new Queue();;
+  private Queue queue = new Queue();
+  private boolean loopMode;
 
   public Session() {
   }
@@ -93,5 +84,17 @@ public class Session {
 
   public void setSavedProgression(Duration savedProgression) {
     this.savedProgression = savedProgression;
+  }
+
+  public boolean isLoopMode() {
+    return loopMode;
+  }
+
+  public void setLoopMode(boolean loopMode) {
+    this.loopMode = loopMode;
+  }
+
+  public enum SessionState {
+    PLAY, STOP, PAUSE
   }
 }

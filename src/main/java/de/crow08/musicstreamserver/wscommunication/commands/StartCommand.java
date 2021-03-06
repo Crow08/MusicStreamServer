@@ -1,6 +1,6 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
-public class StartCommand extends Command{
+public class StartCommand extends Command {
   long songId;
   long time;
 

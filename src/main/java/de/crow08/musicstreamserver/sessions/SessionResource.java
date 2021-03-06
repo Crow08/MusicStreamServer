@@ -19,9 +19,9 @@ import java.util.Optional;
 @RequestMapping("/sessions")
 public class SessionResource {
 
+  final SessionController sessionController;
   private final SessionRepository sessionRepository;
   private final PlaylistRepository playlistRepository;
-  final SessionController sessionController;
 
   @Autowired
   public SessionResource(SessionRepository sessionRepository, PlaylistRepository playlistRepository, SessionController sessionController) {
@@ -52,7 +52,7 @@ public class SessionResource {
   public @ResponseBody String creatNewSession(@PathVariable String sessionId, @RequestBody String playlistId) {
     Optional<Session> session = sessionRepository.findById(Long.parseLong(sessionId));
     Optional<Playlist> playlist = playlistRepository.findById(Long.parseLong(playlistId));
-    if(session.isPresent() && playlist.isPresent()){
+    if (session.isPresent() && playlist.isPresent()) {
       sessionController.addSongs(session.get(), playlist.get().getSongs());
     }
     return "OK";

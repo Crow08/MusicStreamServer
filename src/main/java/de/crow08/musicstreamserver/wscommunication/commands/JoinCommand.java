@@ -2,25 +2,31 @@ package de.crow08.musicstreamserver.wscommunication.commands;
 
 import de.crow08.musicstreamserver.sessions.Session;
 
-public class JoinCommand extends Command{
+import java.util.List;
+
+public class JoinCommand extends Command {
 
   long songId;
   long time;
   long startOffset;
   Session.SessionState sessionState;
   long userId;
+  boolean loop;
+  List<String> queue;
 
   public JoinCommand() {
     super("Join");
   }
 
-  public JoinCommand(long songId, long time, long startOffset, Session.SessionState sessionState, long userId) {
+  public JoinCommand(long songId, long time, long startOffset, Session.SessionState sessionState, long userId, boolean loop, List<String> queue) {
     super("Join");
     this.songId = songId;
     this.time = time;
     this.startOffset = startOffset;
     this.sessionState = sessionState;
     this.userId = userId;
+    this.loop = loop;
+    this.queue = queue;
   }
 
   public long getSongId() {
@@ -61,5 +67,21 @@ public class JoinCommand extends Command{
 
   public void setUserId(long userId) {
     this.userId = userId;
+  }
+
+  public boolean isLoop() {
+    return loop;
+  }
+
+  public void setLoop(boolean loop) {
+    this.loop = loop;
+  }
+
+  public List<String> getQueue() {
+    return queue;
+  }
+
+  public void setQueue(List<String> queue) {
+    this.queue = queue;
   }
 }

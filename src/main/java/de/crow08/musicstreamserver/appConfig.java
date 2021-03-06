@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 public class appConfig {
 
   @Bean
-  public SessionRepository getSessionRepository(){
+  public SessionRepository getSessionRepository() {
     return new SessionRepository();
   }
 }

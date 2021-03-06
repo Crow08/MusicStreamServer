@@ -3,10 +3,8 @@ package de.crow08.musicstreamserver.queue;
 import de.crow08.musicstreamserver.playlists.Playlist;
 import de.crow08.musicstreamserver.song.Song;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public class Queue {
