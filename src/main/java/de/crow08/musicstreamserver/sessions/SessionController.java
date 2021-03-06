@@ -61,9 +61,16 @@ public class SessionController {
   public void nextSong(Session session) {
     Queue queue = session.getQueue();
     Song currentSong = queue.getCurrentSong();
+    // Add current song to history
     if (currentSong != null) {
       queue.getHistorySongs().add(currentSong);
     }
+    // If queue is empty and loopMode is active, dump history into queue.
+    if (queue.getQueuedSongs().size() <= 0 && session.isLoopMode() && !queue.getHistorySongs().isEmpty()) {
+      queue.getQueuedSongs().addAll(queue.getHistorySongs());
+      queue.getHistorySongs().clear();
+    }
+    // Get current song from queue.
     if (queue.getQueuedSongs().size() > 0) {
       queue.setCurrentSong(queue.getQueuedSongs().get(0));
       queue.getQueuedSongs().remove(0);
@@ -84,9 +91,14 @@ public class SessionController {
     if (currentSong != null) {
       queue.getQueuedSongs().add(0, currentSong);
     }
-    if (queue.getHistorySongs().size() > 0) {
-      queue.setCurrentSong(queue.getHistorySongs().get(0));
-      queue.getHistorySongs().remove(0);
+    // if history is empty and loop mode is active use the last song int the queue instead.
+    if (queue.getHistorySongs().size() <= 0 && session.isLoopMode() && !queue.getQueuedSongs().isEmpty()) {
+      queue.setCurrentSong(queue.getQueuedSongs().get(queue.getQueuedSongs().size() - 1));
+      queue.getQueuedSongs().remove(queue.getQueuedSongs().size() - 1);
+    // if the history is not empty use the latest long.
+    } else if (queue.getHistorySongs().size() > 0) {
+      queue.setCurrentSong(queue.getHistorySongs().get(queue.getHistorySongs().size() - 1));
+      queue.getHistorySongs().remove(queue.getHistorySongs().size() - 1);
     } else {
       queue.setCurrentSong(null);
     }
