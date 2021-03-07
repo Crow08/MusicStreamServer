@@ -2,6 +2,7 @@ package de.crow08.musicstreamserver.song;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import de.crow08.musicstreamserver.artist.Artist;
+import de.crow08.musicstreamserver.genre.Genre;
 import de.crow08.musicstreamserver.playlists.Playlist;
 import org.springframework.context.annotation.Lazy;
 
@@ -9,12 +10,10 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
-import javax.persistence.MapsId;
-import javax.persistence.OneToOne;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 public class Song {
@@ -28,6 +27,9 @@ public class Song {
 
   @ManyToOne
   private Artist artist;
+
+  @ManyToMany
+  private Set<Genre> genre;
 
   @Column(nullable = false)
   private String path;
@@ -68,6 +70,14 @@ public class Song {
 
   public void setArtist(Artist artist) {
     this.artist = artist;
+  }
+
+  public Set<Genre> getGenre() {
+    return genre;
+  }
+
+  public void setGenre(Set<Genre> genre) {
+    this.genre = genre;
   }
 
   public String getPath() {
