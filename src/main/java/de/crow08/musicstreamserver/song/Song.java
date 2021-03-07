@@ -1,6 +1,7 @@
 package de.crow08.musicstreamserver.song;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import de.crow08.musicstreamserver.artist.Artist;
 import de.crow08.musicstreamserver.playlists.Playlist;
 import org.springframework.context.annotation.Lazy;
 
@@ -8,7 +9,11 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
+import javax.persistence.MapsId;
+import javax.persistence.OneToOne;
 import java.util.List;
 
 @Entity
@@ -21,8 +26,8 @@ public class Song {
   @Column(nullable = false)
   private String title;
 
-  @Column(nullable = true)
-  private String artist;
+  @ManyToOne
+  private Artist artist;
 
   @Column(nullable = false)
   private String path;
@@ -35,10 +40,10 @@ public class Song {
   public Song() {
   }
 
-  public Song(String title, String artist, String path) {
+  public Song(String title, String path, Artist artist) {
     this.title = title;
-    this.artist = artist;
     this.path = path;
+    this.artist = artist;
   }
 
   public long getId() {
@@ -57,11 +62,11 @@ public class Song {
     this.title = title;
   }
 
-  public String getArtist() {
+  public Artist getArtist() {
     return artist;
   }
 
-  public void setArtist(String artist) {
+  public void setArtist(Artist artist) {
     this.artist = artist;
   }
 

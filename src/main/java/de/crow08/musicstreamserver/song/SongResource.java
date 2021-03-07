@@ -1,6 +1,10 @@
 package de.crow08.musicstreamserver.song;
 
 import com.neverpile.urlcrypto.PreSignedUrlEnabled;
+import de.crow08.musicstreamserver.artist.Artist;
+import de.crow08.musicstreamserver.artist.ArtistRepository;
+import de.crow08.musicstreamserver.playlists.Playlist;
+import de.crow08.musicstreamserver.playlists.PlaylistRepository;
 import de.crow08.musicstreamserver.utils.TrimmedAudioInputStream;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotReadException;
@@ -17,10 +21,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.ResourceUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -30,6 +38,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.Optional;
 
 @RestController
@@ -38,9 +50,46 @@ public class SongResource {
 
   private final SongRepository songRepository;
 
+  private final ArtistRepository artistRepository;
+
+  private final PlaylistRepository playlistRepository;
+
   @Autowired
-  public SongResource(SongRepository songRepository) {
+  public SongResource(SongRepository songRepository, ArtistRepository artistRepository, PlaylistRepository playlistRepository) {
     this.songRepository = songRepository;
+    this.artistRepository = artistRepository;
+    this.playlistRepository = playlistRepository;
+  }
+
+  @PostMapping("/")
+  public @ResponseBody ResponseEntity<Resource> uploadSong(@RequestParam("file") MultipartFile[] files, @RequestParam("artistId") long artistId, @RequestParam("playlistId") long playlistId) throws IOException {
+
+
+    for (MultipartFile mpFile : files) {
+      Optional<Artist> artist = artistRepository.findById(artistId);
+      if(artist.isPresent()) {
+        String fileName = Objects.requireNonNull(mpFile.getOriginalFilename());
+        String songPath = "songs/" + artistId;
+        Path fullPath = Paths.get("src", "main", "resources", songPath);
+        Files.createDirectories(fullPath);
+        File file = new File(Paths.get("src", "main", "resources", "songs", Long.toString(artistId)).toAbsolutePath().toString(), fileName);
+        if (!file.createNewFile()) {
+          return new ResponseEntity<>(HttpStatus.CONFLICT);
+        }
+        mpFile.transferTo(file);
+
+        Song song = new Song(fileName, songPath + "/" + fileName, artist.get());
+        songRepository.save(song);
+
+        if (playlistId != 0) {
+          playlistRepository.findById(playlistId).ifPresent(playlist -> {
+            playlist.getSongs().add(song);
+            playlistRepository.save(playlist);
+          });
+        }
+      }
+    }
+    return new ResponseEntity<>(HttpStatus.OK);
   }
 
   @GetMapping("/all")
