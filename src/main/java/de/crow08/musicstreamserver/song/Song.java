@@ -1,6 +1,5 @@
 package de.crow08.musicstreamserver.song;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import de.crow08.musicstreamserver.artist.Artist;
 import de.crow08.musicstreamserver.genre.Genre;
 import de.crow08.musicstreamserver.playlists.Playlist;
@@ -10,6 +9,8 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import java.util.List;
@@ -29,14 +30,16 @@ public class Song {
   private Artist artist;
 
   @ManyToMany
-  private Set<Genre> genre;
+  @JoinTable(name = "song_genre",
+      joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
+      inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id"))
+  private List<Genre> genre;
 
   @Column(nullable = false)
   private String path;
 
   @ManyToMany(mappedBy = "songs")
   @Lazy
-  @JsonIgnore
   private List<Playlist> playlists;
 
   public Song() {
@@ -72,11 +75,11 @@ public class Song {
     this.artist = artist;
   }
 
-  public Set<Genre> getGenre() {
+  public List<Genre> getGenre() {
     return genre;
   }
 
-  public void setGenre(Set<Genre> genre) {
+  public void setGenre(List<Genre> genre) {
     this.genre = genre;
   }
 
@@ -88,12 +91,10 @@ public class Song {
     this.path = path;
   }
 
-  @JsonIgnore
   public List<Playlist> getPlaylists() {
     return playlists;
   }
 
-  @JsonIgnore
   public void setPlaylists(List<Playlist> playlists) {
     this.playlists = playlists;
   }

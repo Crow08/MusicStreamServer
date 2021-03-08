@@ -14,4 +14,7 @@ INSERT INTO `playlist` (`id`, `author`, `name`) VALUES (0, '', 'no playlist'),
 INSERT INTO `song_playlist` (`playlist_id`, `song_id`) VALUES ('1', '1'), ('1', '0');
 INSERT INTO `song_playlist` (`playlist_id`, `song_id`) VALUES ('2', '2'), ('2', '3'), ('2', '4'), ('2', '5');
 
+INSERT INTO `genre` (`id`, `name`) VALUES (1, 'Electronic'),
+                                          (2, 'Rock');
+
 update hibernate_sequence set next_val= 6

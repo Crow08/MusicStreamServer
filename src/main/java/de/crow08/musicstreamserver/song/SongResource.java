@@ -3,6 +3,8 @@ package de.crow08.musicstreamserver.song;
 import com.neverpile.urlcrypto.PreSignedUrlEnabled;
 import de.crow08.musicstreamserver.artist.Artist;
 import de.crow08.musicstreamserver.artist.ArtistRepository;
+import de.crow08.musicstreamserver.genre.Genre;
+import de.crow08.musicstreamserver.genre.GenreRepository;
 import de.crow08.musicstreamserver.playlists.Playlist;
 import de.crow08.musicstreamserver.playlists.PlaylistRepository;
 import de.crow08.musicstreamserver.utils.TrimmedAudioInputStream;
@@ -41,8 +43,11 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/songs")
@@ -54,15 +59,24 @@ public class SongResource {
 
   private final PlaylistRepository playlistRepository;
 
+  private final GenreRepository genreRepository;
+
   @Autowired
-  public SongResource(SongRepository songRepository, ArtistRepository artistRepository, PlaylistRepository playlistRepository) {
+  public SongResource(SongRepository songRepository,
+                      ArtistRepository artistRepository,
+                      PlaylistRepository playlistRepository,
+                      GenreRepository genreRepository) {
     this.songRepository = songRepository;
     this.artistRepository = artistRepository;
     this.playlistRepository = playlistRepository;
+    this.genreRepository = genreRepository;
   }
 
   @PostMapping("/")
-  public @ResponseBody ResponseEntity<Resource> uploadSong(@RequestParam("file") MultipartFile[] files, @RequestParam("artistId") long artistId, @RequestParam("playlistId") long playlistId) throws IOException {
+  public @ResponseBody ResponseEntity<Resource> uploadSong(@RequestParam("file") MultipartFile[] files,
+                                                           @RequestParam("artistId") long artistId,
+                                                           @RequestParam("genre") long genreId,
+                                                           @RequestParam("playlistId") long playlistId) throws IOException {
 
 
     for (MultipartFile mpFile : files) {
@@ -79,10 +93,22 @@ public class SongResource {
         mpFile.transferTo(file);
 
         Song song = new Song(fileName, songPath + "/" + fileName, artist.get());
+
+
+        genreRepository.findById(genreId).ifPresent(genre -> {
+          if (song.getGenre() == null) {
+            song.setGenre(new ArrayList<>());
+          }
+          song.getGenre().add(genre);
+        });
+
         songRepository.save(song);
 
         if (playlistId != 0) {
           playlistRepository.findById(playlistId).ifPresent(playlist -> {
+            if(playlist.getSongs() == null){
+              playlist.setSongs(new ArrayList<>());
+            }
             playlist.getSongs().add(song);
             playlistRepository.save(playlist);
           });

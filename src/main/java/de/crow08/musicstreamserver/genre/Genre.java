@@ -8,6 +8,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -21,7 +22,7 @@ public class Genre {
   private String name;
 
   @ManyToMany(mappedBy="genre")
-  private Set<Song> songs;
+  private List<Song> songs;
 
   public Genre() {
   }
