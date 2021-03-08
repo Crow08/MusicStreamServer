@@ -19,7 +19,7 @@ public class Artist {
   @Column(nullable = false, unique = true)
   private String name;
 
-  @OneToMany(mappedBy="artist")
+  @OneToMany(mappedBy = "artist")
   private Set<Song> songs;
 
   public Artist() {

@@ -95,7 +95,7 @@ public class SessionController {
     if (queue.getHistorySongs().size() <= 0 && session.isLoopMode() && !queue.getQueuedSongs().isEmpty()) {
       queue.setCurrentSong(queue.getQueuedSongs().get(queue.getQueuedSongs().size() - 1));
       queue.getQueuedSongs().remove(queue.getQueuedSongs().size() - 1);
-    // if the history is not empty use the latest long.
+      // if the history is not empty use the latest long.
     } else if (queue.getHistorySongs().size() > 0) {
       queue.setCurrentSong(queue.getHistorySongs().get(queue.getHistorySongs().size() - 1));
       queue.getHistorySongs().remove(queue.getHistorySongs().size() - 1);

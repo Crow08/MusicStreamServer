@@ -3,9 +3,7 @@ package de.crow08.musicstreamserver.song;
 import com.neverpile.urlcrypto.PreSignedUrlEnabled;
 import de.crow08.musicstreamserver.artist.Artist;
 import de.crow08.musicstreamserver.artist.ArtistRepository;
-import de.crow08.musicstreamserver.genre.Genre;
 import de.crow08.musicstreamserver.genre.GenreRepository;
-import de.crow08.musicstreamserver.playlists.Playlist;
 import de.crow08.musicstreamserver.playlists.PlaylistRepository;
 import de.crow08.musicstreamserver.utils.TrimmedAudioInputStream;
 import org.jaudiotagger.audio.AudioFileIO;
@@ -30,7 +28,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -44,10 +41,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/songs")
@@ -81,7 +76,7 @@ public class SongResource {
 
     for (MultipartFile mpFile : files) {
       Optional<Artist> artist = artistRepository.findById(artistId);
-      if(artist.isPresent()) {
+      if (artist.isPresent()) {
         String fileName = Objects.requireNonNull(mpFile.getOriginalFilename());
         String songPath = "songs/" + artistId;
         Path fullPath = Paths.get("src", "main", "resources", songPath);
@@ -106,7 +101,7 @@ public class SongResource {
 
         if (playlistId != 0) {
           playlistRepository.findById(playlistId).ifPresent(playlist -> {
-            if(playlist.getSongs() == null){
+            if (playlist.getSongs() == null) {
               playlist.setSongs(new ArrayList<>());
             }
             playlist.getSongs().add(song);

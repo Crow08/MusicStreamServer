@@ -8,9 +8,8 @@ import java.util.Optional;
 
 public class SessionRepository implements Repository<Session, Long> {
 
-  private long idSequencer = 1;
-
   private final Map<Long, Session> repo = new HashMap<>();
+  private long idSequencer = 1;
 
   public Optional<Session> findById(long id) {
     return Optional.ofNullable(repo.get(id));
