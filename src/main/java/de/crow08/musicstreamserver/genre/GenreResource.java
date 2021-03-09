@@ -1,6 +1,8 @@
 package de.crow08.musicstreamserver.genre;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,4 +22,10 @@ public class GenreResource {
     return genreRepository.findAll();
   }
 
+  @PostMapping(path = "/")
+  public @ResponseBody long creatNewGenre(@RequestBody String name) {
+    Genre genre = new Genre(name);
+    genreRepository.save(genre);
+    return genre.getId();
+  }
 }

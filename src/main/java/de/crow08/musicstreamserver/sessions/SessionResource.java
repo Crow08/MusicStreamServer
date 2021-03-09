@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,10 +41,10 @@ public class SessionResource {
     return sessionRepository.findAll();
   }
 
-  @PutMapping(path = "/")
+  @PostMapping(path = "/")
   public @ResponseBody long creatNewSession(@RequestBody String name) {
     AuthenticatedUser user = ((AuthenticatedUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-    Session session = new Session(user.getUsername(), name);
+    Session session = new Session(name, user);
     sessionRepository.save(session);
     return session.getId();
   }
