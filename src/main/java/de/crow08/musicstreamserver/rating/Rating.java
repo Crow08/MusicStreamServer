@@ -35,6 +35,14 @@ public class Rating {
     this.ratingValue = ratingValue;
   }
 
+  public RatingId getId() {
+    return id;
+  }
+
+  public void setId(RatingId id) {
+    this.id = id;
+  }
+
   public User getUser() {
     return user;
   }
