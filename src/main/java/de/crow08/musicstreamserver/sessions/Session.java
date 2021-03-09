@@ -2,6 +2,7 @@ package de.crow08.musicstreamserver.sessions;
 
 import de.crow08.musicstreamserver.playlists.Playlist;
 import de.crow08.musicstreamserver.queue.Queue;
+import de.crow08.musicstreamserver.users.User;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -9,7 +10,7 @@ import java.time.Instant;
 public class Session {
 
   private long id;
-  private String host;
+  private User host;
   private String name;
   private SessionState sessionState = SessionState.STOP;
   private Instant songStarted = null;
@@ -20,13 +21,13 @@ public class Session {
   public Session() {
   }
 
-  public Session(String host, String name) {
+  public Session(String name, User host) {
     this.host = host;
     this.name = name;
   }
 
-  public Session(String host, String name, Playlist playlist) {
-    this(host, name);
+  public Session(String name, User host, Playlist playlist) {
+    this(name, host);
     this.queue = new Queue(playlist);
   }
 
@@ -38,11 +39,11 @@ public class Session {
     this.id = id;
   }
 
-  public String getHost() {
+  public User getHost() {
     return host;
   }
 
-  public void setHost(String host) {
+  public void setHost(User host) {
     this.host = host;
   }
 
