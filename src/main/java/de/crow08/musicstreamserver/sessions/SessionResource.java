@@ -50,12 +50,11 @@ public class SessionResource {
   }
 
   @PutMapping(path = "/{sessionId}/addpl")
-  public @ResponseBody String creatNewSession(@PathVariable String sessionId, @RequestBody String playlistId) {
+  public void creatNewSession(@PathVariable String sessionId, @RequestBody String playlistId) {
     Optional<Session> session = sessionRepository.findById(Long.parseLong(sessionId));
     Optional<Playlist> playlist = playlistRepository.findById(Long.parseLong(playlistId));
     if (session.isPresent() && playlist.isPresent()) {
       sessionController.addSongs(session.get(), playlist.get().getSongs());
     }
-    return "OK";
   }
 }
