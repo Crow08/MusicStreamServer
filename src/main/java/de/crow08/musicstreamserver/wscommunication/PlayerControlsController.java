@@ -132,7 +132,7 @@ public class PlayerControlsController {
 
   private List<String> getReadableQueue(Session session) {
     return session.getQueue().getQueuedSongs().stream()
-        .map(song -> song.getTitle() + (song.getArtist() != null ? " - " + song.getArtist() : ""))
+        .map(song -> song.getTitle() + (song.getArtist() != null ? " - " + song.getArtist().getName() : ""))
         .collect(Collectors.toList());
   }
 }

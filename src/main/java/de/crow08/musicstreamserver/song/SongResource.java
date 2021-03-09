@@ -78,7 +78,7 @@ public class SongResource {
       Optional<Artist> artist = artistRepository.findById(artistId);
       if (artist.isPresent()) {
         String fileName = Objects.requireNonNull(mpFile.getOriginalFilename());
-        String songPath = "songs/" + artistId;
+        String songPath = "/songs/" + artistId;
         Path fullPath = Paths.get("src", "main", "resources", songPath);
         Files.createDirectories(fullPath);
         File file = new File(Paths.get("src", "main", "resources", "songs", Long.toString(artistId)).toAbsolutePath().toString(), fileName);
@@ -99,7 +99,7 @@ public class SongResource {
 
         songRepository.save(song);
 
-        if (playlistId != 0) {
+        if (playlistId > 1) {
           playlistRepository.findById(playlistId).ifPresent(playlist -> {
             if (playlist.getSongs() == null) {
               playlist.setSongs(new ArrayList<>());
@@ -129,7 +129,7 @@ public class SongResource {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
     long offsetMillis = Long.parseLong(offset);
     if (song.isPresent()) {
-      File origFile = ResourceUtils.getFile("classpath:" + song.get().getPath());
+      File origFile = new File(Paths.get("src", "main", "resources").toAbsolutePath() + song.get().getPath());
       File outFile;
       if (song.get().getPath().endsWith(".wav")) {
         outFile = cutWaveFile(origFile, offsetMillis);
@@ -155,7 +155,7 @@ public class SongResource {
   public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
     if (song.isPresent()) {
-      File origFile = ResourceUtils.getFile("classpath:" + song.get().getPath());
+      File origFile = new File(Paths.get("src", "main", "resources").toAbsolutePath() + song.get().getPath());
       InputStreamResource stream = new InputStreamResource(new FileInputStream(origFile));
       return ResponseEntity.ok()
           .contentLength(origFile.length())
