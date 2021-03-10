@@ -3,6 +3,7 @@ package de.crow08.musicstreamserver.song;
 import de.crow08.musicstreamserver.artist.Artist;
 import de.crow08.musicstreamserver.genre.Genre;
 import de.crow08.musicstreamserver.playlists.Playlist;
+import de.crow08.musicstreamserver.tag.Tag;
 import org.springframework.context.annotation.Lazy;
 
 import javax.persistence.Column;
@@ -34,6 +35,12 @@ public class Song {
       joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
       inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id"))
   private List<Genre> genre;
+
+  @ManyToMany
+  @JoinTable(name = "song_tag",
+      joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
+      inverseJoinColumns = @JoinColumn(name = "tag_id", referencedColumnName = "id"))
+  private List<Tag> tags;
 
   @Column(nullable = false)
   private String path;
@@ -81,6 +88,14 @@ public class Song {
 
   public void setGenre(List<Genre> genre) {
     this.genre = genre;
+  }
+
+  public List<Tag> getTag() {
+    return tags;
+  }
+
+  public void setTag(List<Tag> tags) {
+    this.tags = tags;
   }
 
   public String getPath() {
