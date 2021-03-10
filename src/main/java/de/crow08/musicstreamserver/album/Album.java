@@ -1,4 +1,4 @@
-package de.crow08.musicstreamserver.artist;
+package de.crow08.musicstreamserver.album;
 
 import de.crow08.musicstreamserver.song.Song;
 
@@ -11,7 +11,7 @@ import javax.persistence.OneToMany;
 import java.util.List;
 
 @Entity
-public class Artist {
+public class Album {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,10 +23,10 @@ public class Artist {
   @OneToMany(mappedBy = "artist")
   private List<Song> songs;
 
-  public Artist() {
+  public Album() {
   }
 
-  public Artist(String name) {
+  public Album(String name) {
     this.name = name;
   }
 

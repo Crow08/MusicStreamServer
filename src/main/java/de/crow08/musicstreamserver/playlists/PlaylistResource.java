@@ -29,7 +29,7 @@ public class PlaylistResource {
   }
 
   @GetMapping("/all")
-  public @ResponseBody Iterable<Playlist> getSessions() {
+  public @ResponseBody Iterable<Playlist> getPlaylists() {
     return playlistRepository.findAll();
   }
 
@@ -39,7 +39,7 @@ public class PlaylistResource {
   }
 
   @PostMapping(path = "/")
-  public @ResponseBody long creatNewPlaylist(@RequestBody String playlistJson) throws Exception {
+  public @ResponseBody long createNewPlaylist(@RequestBody String playlistJson) throws Exception {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode playlistNode = mapper.readTree(playlistJson);
     User user = userRepository.findById(playlistNode.get("author_id").longValue()).orElseThrow(() -> new Exception("User Not found!"));

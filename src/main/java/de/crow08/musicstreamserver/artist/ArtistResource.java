@@ -18,12 +18,12 @@ public class ArtistResource {
   }
 
   @GetMapping("/all")
-  public @ResponseBody Iterable<Artist> getSessions() {
+  public @ResponseBody Iterable<Artist> getArtist() {
     return artistRepository.findAll();
   }
 
   @PostMapping(path = "/")
-  public @ResponseBody long creatNewArtist(@RequestBody String name) {
+  public @ResponseBody long createNewArtist(@RequestBody String name) {
     Artist artist = new Artist(name);
     artistRepository.save(artist);
     return artist.getId();

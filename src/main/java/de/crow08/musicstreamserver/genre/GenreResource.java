@@ -18,12 +18,12 @@ public class GenreResource {
   }
 
   @GetMapping("/all")
-  public @ResponseBody Iterable<Genre> getSessions() {
+  public @ResponseBody Iterable<Genre> getGenres() {
     return genreRepository.findAll();
   }
 
   @PostMapping(path = "/")
-  public @ResponseBody long creatNewGenre(@RequestBody String name) {
+  public @ResponseBody long createNewGenre(@RequestBody String name) {
     Genre genre = new Genre(name);
     genreRepository.save(genre);
     return genre.getId();

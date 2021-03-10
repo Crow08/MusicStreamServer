@@ -42,7 +42,7 @@ public class SessionResource {
   }
 
   @PostMapping(path = "/")
-  public @ResponseBody long creatNewSession(@RequestBody String name) {
+  public @ResponseBody long createNewSession(@RequestBody String name) {
     AuthenticatedUser user = ((AuthenticatedUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
     Session session = new Session(name, user);
     sessionRepository.save(session);
@@ -50,7 +50,7 @@ public class SessionResource {
   }
 
   @PutMapping(path = "/{sessionId}/addpl")
-  public void creatNewSession(@PathVariable String sessionId, @RequestBody String playlistId) {
+  public void addSongsToPlaylist(@PathVariable String sessionId, @RequestBody String playlistId) {
     Optional<Session> session = sessionRepository.findById(Long.parseLong(sessionId));
     Optional<Playlist> playlist = playlistRepository.findById(Long.parseLong(playlistId));
     if (session.isPresent() && playlist.isPresent()) {

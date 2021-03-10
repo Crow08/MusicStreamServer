@@ -23,7 +23,7 @@ public class TagResource {
   }
 
   @PostMapping(path = "/")
-  public @ResponseBody long creatNewTag(@RequestBody String name) {
+  public @ResponseBody long createNewTag(@RequestBody String name) {
     Tag tag = new Tag(name);
     tagRepository.save(tag);
     return tag.getId();

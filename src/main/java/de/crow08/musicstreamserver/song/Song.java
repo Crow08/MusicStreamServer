@@ -1,5 +1,6 @@
 package de.crow08.musicstreamserver.song;
 
+import de.crow08.musicstreamserver.album.Album;
 import de.crow08.musicstreamserver.artist.Artist;
 import de.crow08.musicstreamserver.genre.Genre;
 import de.crow08.musicstreamserver.playlists.Playlist;
@@ -29,6 +30,9 @@ public class Song {
 
   @ManyToOne
   private Artist artist;
+
+  @ManyToOne
+  private Album album;
 
   @ManyToMany
   @JoinTable(name = "song_genre",
@@ -82,12 +86,28 @@ public class Song {
     this.artist = artist;
   }
 
+  public Album getAlbum() {
+    return album;
+  }
+
+  public void setAlbum(Album album) {
+    this.album = album;
+  }
+
   public List<Genre> getGenre() {
     return genre;
   }
 
   public void setGenre(List<Genre> genre) {
     this.genre = genre;
+  }
+
+  public List<Tag> getTags() {
+    return tags;
+  }
+
+  public void setTags(List<Tag> tags) {
+    this.tags = tags;
   }
 
   public List<Tag> getTag() {
