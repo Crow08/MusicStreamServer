@@ -20,7 +20,7 @@ public class Genre {
   @Column(nullable = false, unique = true)
   private String name;
 
-  @ManyToMany(mappedBy = "genre")
+  @ManyToMany(mappedBy = "genres")
   private List<Song> songs;
 
   public Genre() {

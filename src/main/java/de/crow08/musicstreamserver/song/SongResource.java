@@ -1,10 +1,18 @@
 package de.crow08.musicstreamserver.song;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neverpile.urlcrypto.PreSignedUrlEnabled;
+import de.crow08.musicstreamserver.album.Album;
+import de.crow08.musicstreamserver.album.AlbumRepository;
 import de.crow08.musicstreamserver.artist.Artist;
 import de.crow08.musicstreamserver.artist.ArtistRepository;
+import de.crow08.musicstreamserver.genre.Genre;
 import de.crow08.musicstreamserver.genre.GenreRepository;
+import de.crow08.musicstreamserver.playlists.Playlist;
 import de.crow08.musicstreamserver.playlists.PlaylistRepository;
+import de.crow08.musicstreamserver.tag.Tag;
+import de.crow08.musicstreamserver.tag.TagRepository;
 import de.crow08.musicstreamserver.utils.TrimmedAudioInputStream;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotReadException;
@@ -18,6 +26,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,6 +49,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -54,60 +64,104 @@ public class SongResource {
   private final PlaylistRepository playlistRepository;
 
   private final GenreRepository genreRepository;
+  private final AlbumRepository albumRepository;
+  private final TagRepository tagRepository;
+  private final Path ResourcesPath = Paths.get("src", "main", "resources");
 
   @Autowired
   public SongResource(SongRepository songRepository,
                       ArtistRepository artistRepository,
                       PlaylistRepository playlistRepository,
-                      GenreRepository genreRepository) {
+                      GenreRepository genreRepository,
+                      AlbumRepository albumRepository,
+                      TagRepository tagRepository) {
     this.songRepository = songRepository;
     this.artistRepository = artistRepository;
     this.playlistRepository = playlistRepository;
     this.genreRepository = genreRepository;
+    this.albumRepository = albumRepository;
+    this.tagRepository = tagRepository;
   }
 
   @PostMapping("/")
-  public @ResponseBody ResponseEntity<Resource> uploadSong(@RequestParam("file") MultipartFile[] files,
-                                                           @RequestParam("artistId") long artistId,
-                                                           @RequestParam("genre") long genreId,
-                                                           @RequestParam("playlistId") long playlistId) throws IOException {
+  @Transactional
+  public @ResponseBody ResponseEntity<Resource> uploadSong(@RequestParam("files") MultipartFile[] files,
+                                                           @RequestParam("data") String data) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode dataNode = mapper.readTree(data);
 
+    long artistId = 1; // 1 is Fallback
+    if (dataNode.get("artistId").isNumber()) {
+      artistId = dataNode.get("artistId").longValue();
+    }
+
+    long albumId = 1; // 1 is Fallback
+    if (dataNode.get("albumId").isNumber()) {
+      dataNode.get("albumId").longValue();
+    }
+
+    long playlistId = 1; // 1 is Fallback
+    if (dataNode.get("playlistId").isNumber()) {
+      playlistId = dataNode.get("playlistId").longValue();
+    }
+
+    List<Long> genreIds = new ArrayList<>();
+    if (dataNode.get("genres").isArray()) {
+      for (JsonNode jsonNode : dataNode.get("genres")) {
+        genreIds.add(jsonNode.asLong());
+      }
+    }
+
+    List<Long> tagIds = new ArrayList<>();
+    if (dataNode.get("tags").isArray()) {
+      for (JsonNode jsonNode : dataNode.get("tags")) {
+        tagIds.add(jsonNode.asLong());
+      }
+    }
+
+    Optional<Artist> artist = artistRepository.findById(artistId);
+    Optional<Album> album = albumRepository.findById(albumId);
+    Optional<Playlist> playlist = playlistRepository.findById(playlistId);
+    Iterable<Genre> genres = genreRepository.findAllById(genreIds);
+    Iterable<Tag> tags = tagRepository.findAllById(tagIds);
 
     for (MultipartFile mpFile : files) {
-      Optional<Artist> artist = artistRepository.findById(artistId);
-      if (artist.isPresent()) {
-        String fileName = Objects.requireNonNull(mpFile.getOriginalFilename());
-        String songPath = "/songs/" + artistId;
-        Path fullPath = Paths.get("src", "main", "resources", songPath);
-        Files.createDirectories(fullPath);
-        File file = new File(Paths.get("src", "main", "resources", "songs", Long.toString(artistId)).toAbsolutePath().toString(), fileName);
-        if (!file.createNewFile()) {
-          return new ResponseEntity<>(HttpStatus.CONFLICT);
-        }
-        mpFile.transferTo(file);
-
-        Song song = new Song(fileName, songPath + "/" + fileName, artist.get());
-
-
-        genreRepository.findById(genreId).ifPresent(genre -> {
-          if (song.getGenre() == null) {
-            song.setGenre(new ArrayList<>());
+      String fileName = Objects.requireNonNull(mpFile.getOriginalFilename());
+      String songPath = "/songs/" + artistId;
+      Path fullPath = Paths.get(this.ResourcesPath.toString(), songPath);
+      // Create new song
+      Song song = new Song(fileName, songPath + "/" + fileName);
+      // Add artist
+      song.setArtist(artist.orElse(null));
+      // Add album
+      song.setAlbum(album.orElse(null));
+      // Add genres
+      ArrayList<Genre> genresList = new ArrayList<>();
+      genres.forEach(genresList::add);
+      song.setGenres(genresList);
+      // Add tags
+      ArrayList<Tag> tagsList = new ArrayList<>();
+      tags.forEach(tagsList::add);
+      song.setTags(tagsList);
+      // Save song
+      songRepository.save(song);
+      // Add to playlist
+      if (playlistId > 1) { // Don't add To playlist with ID: 1
+        playlist.ifPresent(pl -> {
+          if (pl.getSongs() == null) {
+            pl.setSongs(new ArrayList<>());
           }
-          song.getGenre().add(genre);
+          pl.getSongs().add(song);
+          playlistRepository.save(pl);
         });
-
-        songRepository.save(song);
-
-        if (playlistId > 1) {
-          playlistRepository.findById(playlistId).ifPresent(playlist -> {
-            if (playlist.getSongs() == null) {
-              playlist.setSongs(new ArrayList<>());
-            }
-            playlist.getSongs().add(song);
-            playlistRepository.save(playlist);
-          });
-        }
       }
+      //write Song file
+      Files.createDirectories(fullPath);
+      File file = new File(fullPath.toAbsolutePath().toString(), fileName);
+      if (!file.createNewFile()) {
+        return new ResponseEntity<>(HttpStatus.CONFLICT);
+      }
+      mpFile.transferTo(file);
     }
     return new ResponseEntity<>(HttpStatus.OK);
   }
@@ -128,7 +182,7 @@ public class SongResource {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
     long offsetMillis = Long.parseLong(offset);
     if (song.isPresent()) {
-      File origFile = new File(Paths.get("src", "main", "resources").toAbsolutePath() + song.get().getPath());
+      File origFile = new File(ResourcesPath.toAbsolutePath() + song.get().getPath());
       File outFile;
       if (song.get().getPath().endsWith(".wav")) {
         outFile = cutWaveFile(origFile, offsetMillis);

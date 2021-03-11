@@ -38,7 +38,7 @@ public class Song {
   @JoinTable(name = "song_genre",
       joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
       inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id"))
-  private List<Genre> genre;
+  private List<Genre> genres;
 
   @ManyToMany
   @JoinTable(name = "song_tag",
@@ -56,10 +56,9 @@ public class Song {
   public Song() {
   }
 
-  public Song(String title, String path, Artist artist) {
+  public Song(String title, String path) {
     this.title = title;
     this.path = path;
-    this.artist = artist;
   }
 
   public long getId() {
@@ -94,12 +93,12 @@ public class Song {
     this.album = album;
   }
 
-  public List<Genre> getGenre() {
-    return genre;
+  public List<Genre> getGenres() {
+    return genres;
   }
 
-  public void setGenre(List<Genre> genre) {
-    this.genre = genre;
+  public void setGenres(List<Genre> genre) {
+    this.genres = genre;
   }
 
   public List<Tag> getTags() {
@@ -107,14 +106,6 @@ public class Song {
   }
 
   public void setTags(List<Tag> tags) {
-    this.tags = tags;
-  }
-
-  public List<Tag> getTag() {
-    return tags;
-  }
-
-  public void setTag(List<Tag> tags) {
     this.tags = tags;
   }
 
