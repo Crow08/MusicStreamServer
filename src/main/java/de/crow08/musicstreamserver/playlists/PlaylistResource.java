@@ -1,10 +1,10 @@
 package de.crow08.musicstreamserver.playlists;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import de.crow08.musicstreamserver.authentication.AuthenticatedUser;
 import de.crow08.musicstreamserver.users.User;
 import de.crow08.musicstreamserver.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,11 +39,10 @@ public class PlaylistResource {
   }
 
   @PostMapping(path = "/")
-  public @ResponseBody long createNewPlaylist(@RequestBody String playlistJson) throws Exception {
-    ObjectMapper mapper = new ObjectMapper();
-    JsonNode playlistNode = mapper.readTree(playlistJson);
-    User user = userRepository.findById(playlistNode.get("author_id").longValue()).orElseThrow(() -> new Exception("User Not found!"));
-    Playlist playlist = new Playlist(playlistNode.get("name").textValue(), user);
+  public @ResponseBody long createNewPlaylist(@RequestBody String name) throws Exception {
+    AuthenticatedUser authUser = (AuthenticatedUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    User user = userRepository.findById(authUser.getId()).orElseThrow(() -> new Exception("User Not found!"));
+    Playlist playlist = new Playlist(name, user);
     playlistRepository.save(playlist);
     return playlist.getId();
   }
