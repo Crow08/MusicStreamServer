@@ -49,9 +49,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/songs")
@@ -136,11 +138,11 @@ public class SongResource {
       // Add album
       song.setAlbum(album.orElse(null));
       // Add genres
-      ArrayList<Genre> genresList = new ArrayList<>();
+      Set<Genre> genresList = new HashSet<>();
       genres.forEach(genresList::add);
       song.setGenres(genresList);
       // Add tags
-      ArrayList<Tag> tagsList = new ArrayList<>();
+      Set<Tag> tagsList = new HashSet<>();
       tags.forEach(tagsList::add);
       song.setTags(tagsList);
       // Save song

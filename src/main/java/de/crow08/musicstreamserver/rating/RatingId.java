@@ -4,7 +4,6 @@ import de.crow08.musicstreamserver.song.Song;
 import de.crow08.musicstreamserver.users.User;
 
 import javax.persistence.CascadeType;
-import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;

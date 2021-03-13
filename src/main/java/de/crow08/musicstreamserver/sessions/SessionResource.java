@@ -1,8 +1,8 @@
 package de.crow08.musicstreamserver.sessions;
 
-import de.crow08.musicstreamserver.authentication.AuthenticatedUser;
 import de.crow08.musicstreamserver.playlists.Playlist;
 import de.crow08.musicstreamserver.playlists.PlaylistRepository;
+import de.crow08.musicstreamserver.users.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,7 +43,7 @@ public class SessionResource {
 
   @PostMapping(path = "/")
   public @ResponseBody long createNewSession(@RequestBody String name) {
-    AuthenticatedUser user = ((AuthenticatedUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
+    User user = ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
     Session session = new Session(name, user);
     sessionRepository.save(session);
     return session.getId();

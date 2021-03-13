@@ -3,10 +3,10 @@ package de.crow08.musicstreamserver.playlists;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import de.crow08.musicstreamserver.song.Song;
 import de.crow08.musicstreamserver.users.User;
-import org.springframework.context.annotation.Lazy;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -29,11 +29,10 @@ public class Playlist {
   @ManyToOne
   private User author;
 
-  @ManyToMany
+  @ManyToMany(fetch = FetchType.LAZY)
   @JoinTable(name = "song_playlist",
       joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"),
       inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"))
-  @Lazy
   private List<Song> songs;
 
   public Playlist() {

@@ -3,11 +3,8 @@ package de.crow08.musicstreamserver.rating;
 import de.crow08.musicstreamserver.song.Song;
 import de.crow08.musicstreamserver.users.User;
 
-import javax.persistence.CascadeType;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
 
 
 @Entity

@@ -1,14 +1,15 @@
 package de.crow08.musicstreamserver.song;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import de.crow08.musicstreamserver.album.Album;
 import de.crow08.musicstreamserver.artist.Artist;
 import de.crow08.musicstreamserver.genre.Genre;
 import de.crow08.musicstreamserver.playlists.Playlist;
 import de.crow08.musicstreamserver.tag.Tag;
-import org.springframework.context.annotation.Lazy;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -16,7 +17,7 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
-import java.util.List;
+import java.util.Set;
 
 @Entity
 public class Song {
@@ -28,30 +29,30 @@ public class Song {
   @Column(nullable = false)
   private String title;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.EAGER)
   private Artist artist;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.EAGER)
   private Album album;
 
-  @ManyToMany
+  @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "song_genre",
       joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
       inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id"))
-  private List<Genre> genres;
+  private Set<Genre> genres;
 
-  @ManyToMany
+  @ManyToMany(fetch = FetchType.EAGER)
   @JoinTable(name = "song_tag",
       joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
       inverseJoinColumns = @JoinColumn(name = "tag_id", referencedColumnName = "id"))
-  private List<Tag> tags;
+  private Set<Tag> tags;
 
   @Column(nullable = false)
   private String path;
 
-  @ManyToMany(mappedBy = "songs")
-  @Lazy
-  private List<Playlist> playlists;
+  @ManyToMany(mappedBy = "songs", fetch = FetchType.LAZY)
+  @JsonIgnore
+  private Set<Playlist> playlists;
 
   public Song() {
   }
@@ -93,19 +94,19 @@ public class Song {
     this.album = album;
   }
 
-  public List<Genre> getGenres() {
+  public Set<Genre> getGenres() {
     return genres;
   }
 
-  public void setGenres(List<Genre> genre) {
+  public void setGenres(Set<Genre> genre) {
     this.genres = genre;
   }
 
-  public List<Tag> getTags() {
+  public Set<Tag> getTags() {
     return tags;
   }
 
-  public void setTags(List<Tag> tags) {
+  public void setTags(Set<Tag> tags) {
     this.tags = tags;
   }
 
@@ -117,11 +118,11 @@ public class Song {
     this.path = path;
   }
 
-  public List<Playlist> getPlaylists() {
+  public Set<Playlist> getPlaylists() {
     return playlists;
   }
 
-  public void setPlaylists(List<Playlist> playlists) {
+  public void setPlaylists(Set<Playlist> playlists) {
     this.playlists = playlists;
   }
 }
