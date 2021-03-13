@@ -34,7 +34,7 @@ public class Rating {
     this.id = id;
   }
 
-  public long getRatingValue() {
+  public short getRatingValue() {
     return ratingValue;
   }
 
