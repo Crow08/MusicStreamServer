@@ -1,38 +1,47 @@
 package de.crow08.musicstreamserver.rating;
 
+import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.users.User;
+
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import java.io.Serializable;
 
 @Embeddable
 public class RatingId implements Serializable {
-  @Column(name = "user_id")
-  private long userId;
-  @Column(name = "song_id")
-  private long songId;
+  @ManyToOne(cascade = CascadeType.ALL)
+  @JoinColumn(name = "user_id", insertable = false, updatable = false)
+  private User user;
+
+  @ManyToOne(cascade = CascadeType.ALL)
+  @JoinColumn(name = "song_id", insertable = false, updatable = false)
+  private Song song;
 
   public RatingId() {
   }
 
-  public RatingId(long userId, long songId) {
-    this.userId = userId;
-    this.songId = songId;
+  public RatingId(User user, Song song) {
+    this.user = user;
+    this.song = song;
   }
 
-  public long getUserId() {
-    return userId;
+  public User getUser() {
+    return user;
   }
 
-  public void setUserId(long userId) {
-    this.userId = userId;
+  public void setUser(User user) {
+    this.user = user;
   }
 
-  public long getSongId() {
-    return songId;
+  public Song getSong() {
+    return song;
   }
 
-  public void setSongId(long songId) {
-    this.songId = songId;
+  public void setSong(Song song) {
+    this.song = song;
   }
 
   @Override
@@ -44,7 +53,7 @@ public class RatingId implements Serializable {
   public boolean equals(Object obj) {
     if (obj instanceof RatingId) {
       RatingId ratingId = (RatingId) obj;
-      return ratingId.userId == this.userId && ratingId.songId == songId;
+      return ratingId.user.getId() == this.user.getId() && ratingId.song.getId() == song.getId();
     }
     return false;
   }

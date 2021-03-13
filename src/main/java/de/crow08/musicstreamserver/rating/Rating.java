@@ -16,22 +16,13 @@ public class Rating {
   @EmbeddedId
   private RatingId id;
 
-  @ManyToOne(cascade = CascadeType.ALL)
-  @JoinColumn(name = "user_id", insertable = false, updatable = false)
-  private User user;
-
-  @ManyToOne(cascade = CascadeType.ALL)
-  @JoinColumn(name = "song_id", insertable = false, updatable = false)
-  private Song song;
-
   private short ratingValue;
 
   public Rating() {
   }
 
   public Rating(User user, Song song, short ratingValue) {
-    this.user = user;
-    this.song = song;
+    this.id = new RatingId(user, song);
     this.ratingValue = ratingValue;
   }
 
@@ -41,22 +32,6 @@ public class Rating {
 
   public void setId(RatingId id) {
     this.id = id;
-  }
-
-  public User getUser() {
-    return user;
-  }
-
-  public void setUser(User user) {
-    this.user = user;
-  }
-
-  public Song getSong() {
-    return song;
-  }
-
-  public void setSong(Song songs) {
-    this.song = songs;
   }
 
   public long getRatingValue() {
