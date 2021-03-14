@@ -6,6 +6,7 @@ import de.crow08.musicstreamserver.sessions.SessionRepository;
 import de.crow08.musicstreamserver.song.Song;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
+import de.crow08.musicstreamserver.wscommunication.commands.NopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.PauseCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.ResumeCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.StartCommand;
@@ -118,6 +119,20 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     session.setLoopMode(loopMode);
     return new UpdateLoopModeCommand(session.isLoopMode());
+  }
+
+  @MessageMapping("/sessions/{sessionId}/commands/end/{songId}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command end(@DestinationVariable long sessionId, @DestinationVariable long songId, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    synchronized (this){
+      if(session.getQueue().getCurrentSong().getId() == songId) {
+        sessionController.nextSong(session);
+        return startSong(session);
+      }
+    }
+    return new NopCommand();
   }
 
   private Command startSong(Session session) {
