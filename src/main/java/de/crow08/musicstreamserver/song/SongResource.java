@@ -229,6 +229,14 @@ public class SongResource {
     }
   }
 
+  @GetMapping(path = "/getSongsByKeyword/{keyword}")
+  public List<Song> getSongsByKeyword(@PathVariable String keyword) {
+    List<Song> songs = songRepository.findByTitleContains(keyword);
+    System.out.println(songs.size());
+    System.out.println(keyword);
+    return songs;
+  }
+  
   private File cutMP3File(File origFile, long start) throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException, UnsupportedAudioFileException {
     File outFile;
     MP3File f = (MP3File) AudioFileIO.read(origFile);
