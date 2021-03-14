@@ -93,18 +93,20 @@ public class SongResource {
     JsonNode dataNode = mapper.readTree(data);
 
     long artistId = 1; // 1 is Fallback
-    if (dataNode.get("artistId").isNumber()) {
+    if (dataNode.get("artistId") != null && dataNode.get("artistId").isNumber()) {
       artistId = dataNode.get("artistId").longValue();
     }
 
     long albumId = 1; // 1 is Fallback
-    if (dataNode.get("albumId").isNumber()) {
-      dataNode.get("albumId").longValue();
+    if (dataNode.get("albumId") != null && dataNode.get("albumId").isNumber()) {
+      albumId = dataNode.get("albumId").longValue();
     }
 
-    long playlistId = 1; // 1 is Fallback
-    if (dataNode.get("playlistId").isNumber()) {
-      playlistId = dataNode.get("playlistId").longValue();
+    List<Long> playlistIds = new ArrayList<>();
+    if (dataNode.get("playlists").isArray()) {
+      for (JsonNode jsonNode : dataNode.get("playlists")) {
+        playlistIds.add(jsonNode.asLong());
+      }
     }
 
     List<Long> genreIds = new ArrayList<>();
@@ -123,7 +125,6 @@ public class SongResource {
 
     Optional<Artist> artist = artistRepository.findById(artistId);
     Optional<Album> album = albumRepository.findById(albumId);
-    Optional<Playlist> playlist = playlistRepository.findById(playlistId);
     Iterable<Genre> genres = genreRepository.findAllById(genreIds);
     Iterable<Tag> tags = tagRepository.findAllById(tagIds);
 
@@ -158,14 +159,17 @@ public class SongResource {
       mpFile.transferTo(file);
 
       // Add to playlist
-      if (playlistId > 1) { // Don't add To playlist with ID: 1
-        playlist.ifPresent(pl -> {
-          if (pl.getSongs() == null) {
-            pl.setSongs(new ArrayList<>());
-          }
-          pl.getSongs().add(song);
-          playlistRepository.save(pl);
-        });
+      for (long playlistId: playlistIds) {
+        if (playlistId > 1) { // Don't add To playlist with ID: 1
+          Optional<Playlist> playlist = playlistRepository.findById(playlistId);
+          playlist.ifPresent(pl -> {
+            if (pl.getSongs() == null) {
+              pl.setSongs(new ArrayList<>());
+            }
+            pl.getSongs().add(song);
+            playlistRepository.save(pl);
+          });
+        }
       }
     }
     return new ResponseEntity<>(HttpStatus.OK);
