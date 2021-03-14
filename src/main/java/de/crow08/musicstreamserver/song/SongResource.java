@@ -147,6 +147,16 @@ public class SongResource {
       song.setTags(tagsList);
       // Save song
       songRepository.save(song);
+
+      //write Song file
+      Files.createDirectories(fullPath);
+      File file = new File(fullPath.toAbsolutePath().toString(), fileName);
+      if (!file.createNewFile()) {
+        songRepository.delete(song);
+        return new ResponseEntity<>(HttpStatus.CONFLICT);
+      }
+      mpFile.transferTo(file);
+
       // Add to playlist
       if (playlistId > 1) { // Don't add To playlist with ID: 1
         playlist.ifPresent(pl -> {
@@ -157,13 +167,6 @@ public class SongResource {
           playlistRepository.save(pl);
         });
       }
-      //write Song file
-      Files.createDirectories(fullPath);
-      File file = new File(fullPath.toAbsolutePath().toString(), fileName);
-      if (!file.createNewFile()) {
-        return new ResponseEntity<>(HttpStatus.CONFLICT);
-      }
-      mpFile.transferTo(file);
     }
     return new ResponseEntity<>(HttpStatus.OK);
   }
