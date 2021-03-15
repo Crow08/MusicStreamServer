@@ -1,40 +1,84 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
 import de.crow08.musicstreamserver.sessions.Session;
+import de.crow08.musicstreamserver.song.MinimalSong;
 
 import java.util.List;
 
 public class JoinCommand extends Command {
 
-  long songId;
+  long userId;
+  MinimalSong currentSong;
+  List<MinimalSong> queue;
+  List<MinimalSong> history;
+  Session.SessionState sessionState;
+  boolean loopMode;
   long time;
   long startOffset;
-  Session.SessionState sessionState;
-  long userId;
-  boolean loop;
-  List<String> queue;
 
   public JoinCommand() {
     super("Join");
   }
 
-  public JoinCommand(long songId, long time, long startOffset, Session.SessionState sessionState, long userId, boolean loop, List<String> queue) {
+  public JoinCommand(long userId, MinimalSong currentSong, List<MinimalSong> queue, List<MinimalSong> history,
+                     Session.SessionState sessionState, boolean loopMode, long time, long startOffset) {
     super("Join");
-    this.songId = songId;
+    this.userId = userId;
+    this.currentSong = currentSong;
+    this.queue = queue;
+    this.history = history;
+    this.sessionState = sessionState;
+    this.loopMode = loopMode;
     this.time = time;
     this.startOffset = startOffset;
-    this.sessionState = sessionState;
+  }
+
+  public long getUserId() {
+    return userId;
+  }
+
+  public void setUserId(long userId) {
     this.userId = userId;
-    this.loop = loop;
+  }
+
+  public MinimalSong getCurrentSong() {
+    return currentSong;
+  }
+
+  public void setCurrentSong(MinimalSong currentSong) {
+    this.currentSong = currentSong;
+  }
+
+  public List<MinimalSong> getQueue() {
+    return queue;
+  }
+
+  public void setQueue(List<MinimalSong> queue) {
     this.queue = queue;
   }
 
-  public long getSongId() {
-    return songId;
+  public List<MinimalSong> getHistory() {
+    return history;
   }
 
-  public void setSongId(long songId) {
-    this.songId = songId;
+  public void setHistory(List<MinimalSong> history) {
+    this.history = history;
+  }
+
+  public Session.SessionState getSessionState() {
+    return sessionState;
+  }
+
+  public void setSessionState(Session.SessionState sessionState) {
+    this.sessionState = sessionState;
+  }
+
+  public boolean isLoopMode() {
+    return loopMode;
+  }
+
+  public void setLoopMode(boolean loopMode) {
+    this.loopMode = loopMode;
   }
 
   public long getTime() {
@@ -51,37 +95,5 @@ public class JoinCommand extends Command {
 
   public void setStartOffset(long startOffset) {
     this.startOffset = startOffset;
-  }
-
-  public Session.SessionState getSessionState() {
-    return sessionState;
-  }
-
-  public void setSessionState(Session.SessionState sessionState) {
-    this.sessionState = sessionState;
-  }
-
-  public long getUserId() {
-    return userId;
-  }
-
-  public void setUserId(long userId) {
-    this.userId = userId;
-  }
-
-  public boolean isLoop() {
-    return loop;
-  }
-
-  public void setLoop(boolean loop) {
-    this.loop = loop;
-  }
-
-  public List<String> getQueue() {
-    return queue;
-  }
-
-  public void setQueue(List<String> queue) {
-    this.queue = queue;
   }
 }
