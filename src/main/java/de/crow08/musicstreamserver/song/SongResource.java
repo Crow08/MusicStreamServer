@@ -21,6 +21,7 @@ import org.jaudiotagger.audio.exceptions.ReadOnlyFileException;
 import org.jaudiotagger.audio.mp3.MP3File;
 import org.jaudiotagger.tag.TagException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -68,7 +69,8 @@ public class SongResource {
   private final GenreRepository genreRepository;
   private final AlbumRepository albumRepository;
   private final TagRepository tagRepository;
-  private final Path ResourcesPath = Paths.get("src", "main", "resources");
+
+  private final Path storagePath;
 
   @Autowired
   public SongResource(SongRepository songRepository,
@@ -76,13 +78,15 @@ public class SongResource {
                       PlaylistRepository playlistRepository,
                       GenreRepository genreRepository,
                       AlbumRepository albumRepository,
-                      TagRepository tagRepository) {
+                      TagRepository tagRepository,
+                      @Value("${client.storage-path}") String clientStoragePath) {
     this.songRepository = songRepository;
     this.artistRepository = artistRepository;
     this.playlistRepository = playlistRepository;
     this.genreRepository = genreRepository;
     this.albumRepository = albumRepository;
     this.tagRepository = tagRepository;
+    storagePath = Paths.get(clientStoragePath);
   }
 
   @PostMapping("/")
@@ -131,7 +135,7 @@ public class SongResource {
     for (MultipartFile mpFile : files) {
       String fileName = Objects.requireNonNull(mpFile.getOriginalFilename());
       String songPath = "/songs/" + artistId;
-      Path fullPath = Paths.get(this.ResourcesPath.toString(), songPath);
+      Path fullPath = Paths.get(this.storagePath.toString(), songPath);
       // Create new song
       Song song = new Song(fileName, songPath + "/" + fileName);
       // Add artist
@@ -191,7 +195,7 @@ public class SongResource {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
     long offsetMillis = Long.parseLong(offset);
     if (song.isPresent()) {
-      File origFile = new File(ResourcesPath.toAbsolutePath() + song.get().getPath());
+      File origFile = new File(storagePath.toAbsolutePath() + song.get().getPath());
       File outFile;
       if (song.get().getPath().endsWith(".wav")) {
         outFile = cutWaveFile(origFile, offsetMillis);
@@ -217,7 +221,7 @@ public class SongResource {
   public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
     if (song.isPresent()) {
-      File origFile = new File(Paths.get("src", "main", "resources").toAbsolutePath() + song.get().getPath());
+      File origFile = new File(this.storagePath.toAbsolutePath() + song.get().getPath());
       InputStreamResource stream = new InputStreamResource(new FileInputStream(origFile));
       return ResponseEntity.ok()
           .contentLength(origFile.length())
@@ -236,7 +240,7 @@ public class SongResource {
     System.out.println(keyword);
     return songs;
   }
-  
+
   private File cutMP3File(File origFile, long start) throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException, UnsupportedAudioFileException {
     File outFile;
     MP3File f = (MP3File) AudioFileIO.read(origFile);

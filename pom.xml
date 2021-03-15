@@ -11,11 +11,11 @@
 	<groupId>de.crow08.server</groupId>
 	<artifactId>music-stream-server</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<packaging>war</packaging>
 	<name>music-stream-server</name>
 	<description>Spring Boot music streaming server</description>
 	<properties>
-		<java.version>15</java.version>
+		<java.version>11</java.version>
 	</properties>
 	<repositories>
 		<repository>

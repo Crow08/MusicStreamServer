@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ClientProperties {
   private String host;
   private int port;
+  private String storagePath;
 
   public String getHost() {
     return host;
@@ -21,5 +22,13 @@ public class ClientProperties {
 
   public void setPort(int port) {
     this.port = port;
+  }
+
+  public String getStoragePath() {
+    return storagePath;
+  }
+
+  public void setStoragePath(String storagePath) {
+    this.storagePath = storagePath;
   }
 }
