@@ -15,6 +15,7 @@ public class Rating {
 
   private short ratingValue;
 
+  @Deprecated
   public Rating() {
   }
 

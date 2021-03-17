@@ -23,6 +23,7 @@ public class Genre {
   @ManyToMany(mappedBy = "genres")
   private Set<Song> songs;
 
+  @Deprecated
   public Genre() {
   }
 

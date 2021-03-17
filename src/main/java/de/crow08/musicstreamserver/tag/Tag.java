@@ -23,6 +23,7 @@ public class Tag {
   @ManyToMany(mappedBy = "tags")
   private Set<Song> songs;
 
+  @Deprecated
   public Tag() {
   }
 

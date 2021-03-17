@@ -23,6 +23,7 @@ public class Artist {
   @OneToMany(mappedBy = "artist")
   private Set<Song> songs;
 
+  @Deprecated
   public Artist() {
   }
 

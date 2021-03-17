@@ -6,11 +6,13 @@ import de.crow08.musicstreamserver.users.User;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Session {
 
   private long id;
-  private User host;
+  private List<User> users;
   private String name;
   private SessionState sessionState = SessionState.STOP;
   private Instant songStarted = null;
@@ -18,16 +20,18 @@ public class Session {
   private Queue queue = new Queue();
   private boolean loopMode;
 
+  @Deprecated
   public Session() {
   }
 
-  public Session(String name, User host) {
-    this.host = host;
+  public Session(String name, User user) {
+    this.users = new ArrayList<>();
+    users.add(user);
     this.name = name;
   }
 
-  public Session(String name, User host, Playlist playlist) {
-    this(name, host);
+  public Session(String name, User users, Playlist playlist) {
+    this(name, users);
     this.queue = new Queue(playlist);
   }
 
@@ -39,12 +43,12 @@ public class Session {
     this.id = id;
   }
 
-  public User getHost() {
-    return host;
+  public List<User> getUsers() {
+    return users;
   }
 
-  public void setHost(User host) {
-    this.host = host;
+  public void setUsers(List<User> users) {
+    this.users = users;
   }
 
   public String getName() {

@@ -54,6 +54,7 @@ public class Song {
   @JsonIgnore
   private Set<Playlist> playlists;
 
+  @Deprecated
   public Song() {
   }
 

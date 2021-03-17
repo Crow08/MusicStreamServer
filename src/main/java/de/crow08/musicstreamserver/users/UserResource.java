@@ -16,9 +16,6 @@ public class UserResource {
   }
 
   private User getDTO(User user) {
-    User dto = new User();
-    dto.setId(user.getId());
-    dto.setUsername(user.getUsername());
-    return dto;
+    return new User(user.getId(), user.getUsername());
   }
 }

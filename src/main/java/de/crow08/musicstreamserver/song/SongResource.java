@@ -163,7 +163,7 @@ public class SongResource {
       mpFile.transferTo(file);
 
       // Add to playlist
-      for (long playlistId: playlistIds) {
+      for (long playlistId : playlistIds) {
         if (playlistId > 1) { // Don't add To playlist with ID: 1
           Optional<Playlist> playlist = playlistRepository.findById(playlistId);
           playlist.ifPresent(pl -> {
@@ -240,7 +240,7 @@ public class SongResource {
     System.out.println(keyword);
     return songs;
   }
-  
+
   @GetMapping(path = "/getSongsByArtist/{keyword}")
   public List<Song> getSongsByArtist(@PathVariable String keyword) {
     List<Song> songs = songRepository.findByArtist(keyword);

@@ -19,12 +19,18 @@ public class User {
   @Column(nullable = false)
   private String password;
 
+  @Deprecated
   public User() {
   }
 
   public User(String username, String password) {
     this.username = username;
     this.password = password;
+  }
+
+  public User(long id, String username) {
+    this.id = id;
+    this.username = username;
   }
 
   public long getId() {

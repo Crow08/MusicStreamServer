@@ -23,6 +23,7 @@ public class Album {
   @OneToMany(mappedBy = "artist")
   private List<Song> songs;
 
+  @Deprecated
   public Album() {
   }
 

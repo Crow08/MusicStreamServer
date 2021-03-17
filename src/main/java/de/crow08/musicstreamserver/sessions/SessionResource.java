@@ -44,7 +44,7 @@ public class SessionResource {
   @PostMapping(path = "/")
   public @ResponseBody long createNewSession(@RequestBody String name) {
     User user = ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-    Session session = new Session(name, user);
+    Session session = this.sessionController.createNewSession(name, user);
     sessionRepository.save(session);
     return session.getId();
   }

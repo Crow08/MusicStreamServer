@@ -14,6 +14,7 @@ import de.crow08.musicstreamserver.wscommunication.commands.StartCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.StopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateLoopModeCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueCommand;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -28,9 +29,10 @@ import java.util.stream.Collectors;
 @Controller
 public class PlayerControlsController {
 
-  final SessionRepository sessionRepository;
-  final SessionController sessionController;
+  private final SessionRepository sessionRepository;
+  private final SessionController sessionController;
 
+  @Autowired
   public PlayerControlsController(SessionRepository sessionRepository, SessionController sessionController) {
     this.sessionRepository = sessionRepository;
     this.sessionController = sessionController;
@@ -128,8 +130,8 @@ public class PlayerControlsController {
   public Command end(@DestinationVariable long sessionId, @DestinationVariable long songId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    synchronized (this){
-      if(session.getQueue().getCurrentSong().getId() == songId) {
+    synchronized (this) {
+      if (session.getQueue().getCurrentSong().getId() == songId) {
         sessionController.nextSong(session);
         return startSong(session);
       }

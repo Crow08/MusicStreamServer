@@ -2,11 +2,18 @@ package de.crow08.musicstreamserver.sessions;
 
 import de.crow08.musicstreamserver.queue.Queue;
 import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.users.User;
+import de.crow08.musicstreamserver.users.UserRepository;
+import de.crow08.musicstreamserver.wscommunication.WebSocketSessionController;
+import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +26,42 @@ import java.util.Optional;
 public class SessionController {
 
   public final static long SYNC_DELAY = 1000;
+
+  private final WebSocketSessionController webSocketSessionController;
+
+  private final List<Session> sessions = new ArrayList<>();
+
+  private final SimpMessagingTemplate simpMessagingTemplate;
+
+  private final UserRepository userRepository;
+
+  @Autowired
+  public SessionController(final WebSocketSessionController webSocketSessionController, SimpMessagingTemplate simpMessagingTemplate, UserRepository userRepository) {
+    this.simpMessagingTemplate = simpMessagingTemplate;
+    this.webSocketSessionController = webSocketSessionController;
+    this.userRepository = userRepository;
+    setUpListeners();
+
+  }
+
+  private void setUpListeners() {
+    webSocketSessionController.addDisconnectListener(UserId -> {
+      for (Session session : sessions) {
+        Optional<User> disconnectedUser = session.getUsers().stream().filter(user -> user.getId() == UserId).findFirst();
+        disconnectedUser.ifPresent(user -> {
+          session.getUsers().remove(user);
+          simpMessagingTemplate.convertAndSend("/topic/sessions/" + session.getId(), new LeaveCommand(UserId));
+        });
+      }
+    });
+    webSocketSessionController.addConnectListener((userId, sessionId) -> {
+      Optional<Session> session = sessions.stream().filter(ses -> sessionId == ses.getId()).findFirst();
+      if (session.isPresent()) {
+        Optional<User> user = userRepository.findById(userId);
+        user.ifPresent(value -> session.get().getUsers().add(value));
+      }
+    });
+  }
 
   /**
    * Gets the current song being played. If no song is being played {@link #nextSong(Session)} is called
@@ -178,5 +221,11 @@ public class SessionController {
    */
   public void shuffleQueue(Session session) {
     Collections.shuffle(session.getQueue().getQueuedSongs());
+  }
+
+  public Session createNewSession(String name, User user) {
+    Session session = new Session(name, user);
+    sessions.add(session);
+    return session;
   }
 }
