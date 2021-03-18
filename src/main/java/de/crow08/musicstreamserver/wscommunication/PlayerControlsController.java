@@ -104,7 +104,7 @@ public class PlayerControlsController {
     long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
     long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
     return new JoinCommand(userId, minSong, getSongsFromQueue(session), getSongsFromHistory(session),
-        session.getSessionState(), session.isLoopMode(), startTime, startOffset);
+        session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/shuffle")

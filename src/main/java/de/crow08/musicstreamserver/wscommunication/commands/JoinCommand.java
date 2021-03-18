@@ -2,6 +2,7 @@ package de.crow08.musicstreamserver.wscommunication.commands;
 
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.song.MinimalSong;
+import de.crow08.musicstreamserver.users.User;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ public class JoinCommand extends Command {
   MinimalSong currentSong;
   List<MinimalSong> queue;
   List<MinimalSong> history;
+  List<User> sessionUsers;
   Session.SessionState sessionState;
   boolean loopMode;
   long time;
@@ -21,7 +23,7 @@ public class JoinCommand extends Command {
   }
 
   public JoinCommand(long userId, MinimalSong currentSong, List<MinimalSong> queue, List<MinimalSong> history,
-                     Session.SessionState sessionState, boolean loopMode, long time, long startOffset) {
+                     Session.SessionState sessionState, boolean loopMode, long time, long startOffset, List<User> sessionUsers) {
     super("Join");
     this.userId = userId;
     this.currentSong = currentSong;
@@ -31,6 +33,7 @@ public class JoinCommand extends Command {
     this.loopMode = loopMode;
     this.time = time;
     this.startOffset = startOffset;
+    this.sessionUsers = sessionUsers;
   }
 
   public long getUserId() {
@@ -95,5 +98,13 @@ public class JoinCommand extends Command {
 
   public void setStartOffset(long startOffset) {
     this.startOffset = startOffset;
+  }
+
+  public List<User> getSessionUsers() {
+    return sessionUsers;
+  }
+
+  public void setSessionUsers(List<User> sessionUsers) {
+    this.sessionUsers = sessionUsers;
   }
 }

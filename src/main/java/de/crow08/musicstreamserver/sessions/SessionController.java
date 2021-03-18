@@ -223,8 +223,8 @@ public class SessionController {
     Collections.shuffle(session.getQueue().getQueuedSongs());
   }
 
-  public Session createNewSession(String name, User user) {
-    Session session = new Session(name, user);
+  public Session createNewSession(String name) {
+    Session session = new Session(name);
     sessions.add(session);
     return session;
   }

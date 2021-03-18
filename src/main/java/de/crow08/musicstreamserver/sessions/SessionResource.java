@@ -2,9 +2,7 @@ package de.crow08.musicstreamserver.sessions;
 
 import de.crow08.musicstreamserver.playlists.Playlist;
 import de.crow08.musicstreamserver.playlists.PlaylistRepository;
-import de.crow08.musicstreamserver.users.User;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,8 +41,7 @@ public class SessionResource {
 
   @PostMapping(path = "/")
   public @ResponseBody long createNewSession(@RequestBody String name) {
-    User user = ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-    Session session = this.sessionController.createNewSession(name, user);
+    Session session = this.sessionController.createNewSession(name);
     sessionRepository.save(session);
     return session.getId();
   }

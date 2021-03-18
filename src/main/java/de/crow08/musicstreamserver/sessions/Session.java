@@ -24,14 +24,13 @@ public class Session {
   public Session() {
   }
 
-  public Session(String name, User user) {
+  public Session(String name) {
     this.users = new ArrayList<>();
-    users.add(user);
     this.name = name;
   }
 
-  public Session(String name, User users, Playlist playlist) {
-    this(name, users);
+  public Session(String name, Playlist playlist) {
+    this(name);
     this.queue = new Queue(playlist);
   }
 
