@@ -242,7 +242,7 @@ public class SongResource {
   }
 
   @GetMapping(path = "/getSongsByArtist/{keyword}")
-  public List<Song> getSongsByArtist(@PathVariable String keyword) {
+  public List<Song> getSongsByArtist(@PathVariable String[] keyword) {
     List<Song> songs = songRepository.findByArtist(keyword);
     System.out.println(songs.size());
     System.out.println(keyword);
