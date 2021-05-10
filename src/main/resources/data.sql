@@ -27,4 +27,4 @@ INSERT INTO `playlist` (`id`, `author_id`, `name`) VALUES (1, null, 'no playlist
 INSERT INTO `song_playlist` (`playlist_id`, `song_id`) VALUES (2, 1), (2, 2),
                                                               (3, 3), (3, 4), (3, 5), (3, 6);
 
-INSERT INTO `song_genre` (`genre_id`, `song_id`) VALUES (1, 3), (1, 4), (1, 5), (1, 6);
+INSERT INTO `song_genre` (`genre_id`, `song_id`) VALUES (1, 3), (1, 4), (2, 5), (2, 6);
