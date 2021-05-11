@@ -9,9 +9,9 @@ import java.util.List;
 public interface SongRepository extends CrudRepository<Song, Long> {
   List<Song> findByTitleContains(String keyword);
 
-  @Query(nativeQuery = true, value = "SELECT song.* FROM song INNER JOIN artist ON song.artist_id=artist.id WHERE artist.id IN :keyword")
+  @Query(nativeQuery = true, value = "SELECT DISTINCT song.* FROM song LEFT JOIN song_genre ON song.id = song_genre.song_id WHERE artist_id IN :keyword")
   List<Song> findByArtist(@Param("keyword") String[] keyword);
-  
-  @Query(nativeQuery = true, value = "SELECT song.* FROM song INNER JOIN song_genre on song.id = song_genre.song_id INNER JOIN genre on song_genre.genre_id = genre.id WHERE genre.id IN :keyword")
+
+  @Query(nativeQuery = true, value = "SELECT DISTINCT song.* FROM song LEFT JOIN song_genre ON song.id = song_genre.song_id WHERE genre_id IN :keyword")
   List<Song> findByGenre(@Param("keyword") String[] keyword);
 }
