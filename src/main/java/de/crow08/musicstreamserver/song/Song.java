@@ -58,6 +58,10 @@ public class Song {
   public Song() {
   }
 
+  public Song(long id) {
+    this.id = id;
+  }
+
   public Song(String title, String path) {
     this.title = title;
     this.path = path;
