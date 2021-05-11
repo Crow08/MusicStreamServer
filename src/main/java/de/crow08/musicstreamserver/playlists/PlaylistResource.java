@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -21,7 +22,6 @@ public class PlaylistResource {
 
   private final PlaylistRepository playlistRepository;
   private final UserRepository userRepository;
-
   @Autowired
   public PlaylistResource(PlaylistRepository playlistRepository, UserRepository userRepository) {
     this.playlistRepository = playlistRepository;
@@ -36,6 +36,17 @@ public class PlaylistResource {
   @GetMapping("/{id}")
   public @ResponseBody Optional<Playlist> getSong(@PathVariable String id) {
     return playlistRepository.findById(Long.parseLong(id));
+  }
+  
+  @PutMapping(path = "/{songId}/addSongToPlaylist/{playlistId}")
+  public void addSongToPlaylist(@PathVariable Long songId, @PathVariable Long playlistId) throws Exception {
+    addSongToPlaylist(songId, playlistId);
+  }
+
+  @PutMapping(path = "/addSongsToPlaylist/{playlistId}")
+  public void addSongsToPlaylist(@RequestBody Long[] song_ids, @PathVariable Long playlistId) throws Exception {
+    for(Long song_id : song_ids)
+      addSongToPlaylist(song_id, playlistId);
   }
 
   @PostMapping(path = "/")
