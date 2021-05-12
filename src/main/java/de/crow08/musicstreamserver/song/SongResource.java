@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/songs")
@@ -257,10 +258,17 @@ public class SongResource {
     System.out.println(keyword);
     return songs;
   }
-  
+
   @PutMapping(path = "/deleteSongById/{songId}")
   public void deleteSongById(@PathVariable Long songId) {
-    songRepository.deleteById(songId);;
+    Song song = songRepository.findById(songId).orElseThrow(()-> new RuntimeException("Song not found"));
+    song.getPlaylists().stream().forEach(playlist ->
+            playlist.setSongs(playlist.getSongs()
+                .stream()
+                .filter(song1 -> song1.getId() != song.getId())
+                .collect(Collectors.toList()))
+        );
+    songRepository.delete(song);
     //maybe add return with ResponseEntity, but I don't know how to catch a server error
     //might work with checking for that song after deletion?
   }
