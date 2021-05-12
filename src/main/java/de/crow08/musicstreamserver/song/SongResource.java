@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -256,6 +257,14 @@ public class SongResource {
     System.out.println(keyword);
     return songs;
   }
+  
+  @PutMapping(path = "/deleteSongById/{songId}")
+  public void deleteSongById(@PathVariable Long songId) {
+    songRepository.deleteById(songId);;
+    //maybe add return with ResponseEntity, but I don't know how to catch a server error
+    //might work with checking for that song after deletion?
+  }
+
 
   private File cutMP3File(File origFile, long start) throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException, UnsupportedAudioFileException {
     File outFile;
