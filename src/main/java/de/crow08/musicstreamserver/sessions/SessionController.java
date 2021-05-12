@@ -222,6 +222,26 @@ public class SessionController {
   public void shuffleQueue(Session session) {
     Collections.shuffle(session.getQueue().getQueuedSongs());
   }
+  
+  /**
+   * Deletes song from the current queue.
+   *
+   * @param session to delete from.
+   * @param song to delete.
+   */
+  public void deleteSongFromQueue(Session session, int queueIndex) {
+    session.getQueue().getQueuedSongs().remove(queueIndex);
+  }
+  
+  /**
+   * Deletes song from the current history.
+   *
+   * @param session to delete from.
+   * @param song to delete.
+   */
+  public void deleteSongFromHistory(Session session, int historyIndex) {
+    session.getQueue().getHistorySongs().remove(historyIndex);
+  }
 
   public Session createNewSession(String name) {
     Session session = new Session(name);

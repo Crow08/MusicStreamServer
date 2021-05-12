@@ -3,6 +3,7 @@ package de.crow08.musicstreamserver.wscommunication;
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
+import de.crow08.musicstreamserver.sessions.SessionResource;
 import de.crow08.musicstreamserver.song.MinimalSong;
 import de.crow08.musicstreamserver.song.Song;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
@@ -12,6 +13,7 @@ import de.crow08.musicstreamserver.wscommunication.commands.PauseCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.ResumeCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.StartCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.StopCommand;
+import de.crow08.musicstreamserver.wscommunication.commands.UpdateHistoryCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateLoopModeCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueCommand;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -135,6 +137,24 @@ public class PlayerControlsController {
         sessionController.nextSong(session);
         return startSong(session);
       }
+    }
+    return new NopCommand();
+  }
+  
+  @MessageMapping("/sessions/{sessionId}/commands/deleteSongFromQueue/{queueIndex}/{type}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command deleteSongFromQueue(@DestinationVariable long sessionId, @DestinationVariable int queueIndex, @DestinationVariable String type, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + queueIndex + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    switch(type){
+    case "queue":
+        sessionController.deleteSongFromQueue(session, queueIndex);
+        System.out.println("removed from queue");
+        return new UpdateQueueCommand(getSongsFromQueue(session));
+    case "history":
+        sessionController.deleteSongFromHistory(session, queueIndex);
+        System.out.println("removed from history");
+        return new UpdateHistoryCommand(getSongsFromHistory(session));
     }
     return new NopCommand();
   }
