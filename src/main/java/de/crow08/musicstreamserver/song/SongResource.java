@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -187,8 +188,8 @@ public class SongResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<Song> getSong(@PathVariable String id) {
-    return songRepository.findById(Long.parseLong(id));
+  public @ResponseBody Optional<Song> getSong(@PathVariable Long id) {
+    return songRepository.findById(id);
   }
 
   @GetMapping("/{id}/data/{offset}")
@@ -272,7 +273,26 @@ public class SongResource {
     //maybe add return with ResponseEntity, but I don't know how to catch a server error
     //might work with checking for that song after deletion?
   }
-
+  
+  @PutMapping(path = "/editSong")
+  public ResponseEntity<String> editSong(@RequestBody Song alteredSong) {
+    Optional<Song> song = songRepository.findById(alteredSong.getId());
+    if (song.isPresent()) {
+      Song originalSong = song.get();
+      originalSong.setTitle(alteredSong.getTitle());
+      originalSong.setArtist(alteredSong.getArtist());
+      originalSong.setAlbum(alteredSong.getAlbum());
+      originalSong.setGenres(alteredSong.getGenres());
+      originalSong.setTags(alteredSong.getTags());
+      System.out.println(originalSong.getTitle());
+      System.out.println(originalSong.getArtist());
+      System.out.println(originalSong.getGenres());
+      songRepository.save(originalSong);
+    }else {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+    return new ResponseEntity<>(HttpStatus.OK);
+  }
 
   private File cutMP3File(File origFile, long start) throws CannotReadException, IOException, TagException, ReadOnlyFileException, InvalidAudioFrameException, UnsupportedAudioFileException {
     File outFile;
