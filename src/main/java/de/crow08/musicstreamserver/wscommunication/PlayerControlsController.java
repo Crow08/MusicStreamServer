@@ -1,9 +1,11 @@
 package de.crow08.musicstreamserver.wscommunication;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import de.crow08.musicstreamserver.queue.Queue;
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
-import de.crow08.musicstreamserver.sessions.SessionResource;
 import de.crow08.musicstreamserver.song.MinimalSong;
 import de.crow08.musicstreamserver.song.Song;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
@@ -15,6 +17,7 @@ import de.crow08.musicstreamserver.wscommunication.commands.StartCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.StopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateHistoryCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateLoopModeCommand;
+import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueAndHistoryCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueCommand;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -24,6 +27,7 @@ import org.springframework.stereotype.Controller;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -118,6 +122,42 @@ public class PlayerControlsController {
     return new UpdateQueueCommand(getSongsFromQueue(session));
   }
 
+  @MessageMapping("/sessions/{sessionId}/commands/movedSong/{previousIndex}/to/{currentIndex}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command swapElements(@DestinationVariable long sessionId, @DestinationVariable int previousIndex, @DestinationVariable int currentIndex, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    Queue queue = session.getQueue();
+
+    if (queue.getHistorySongs().size() > previousIndex) {
+      // Dragged Element is from history
+      if (queue.getHistorySongs().size() > currentIndex) {
+        // Dragged into history
+        Collections.swap(queue.getHistorySongs(), previousIndex, currentIndex);
+      } else {
+        // dragged into queue
+        Song song = queue.getHistorySongs().remove(previousIndex);
+        int queuePos = Math.max(currentIndex - (queue.getHistorySongs().size() + 1), 0);
+        queue.getQueuedSongs().add(queuePos, song);
+      }
+    } else if (queue.getHistorySongs().size() < previousIndex) {
+      // Dragged element is from queue
+      if (queue.getHistorySongs().size() >= currentIndex) {
+        // Dragged into history
+        int queuePos = Math.max(previousIndex - (queue.getHistorySongs().size() + 1), 0);
+        Song song = queue.getQueuedSongs().get(queuePos);
+        queue.getHistorySongs().add(currentIndex, song);
+        queue.getQueuedSongs().remove(queuePos);
+      } else {
+        // Dragged into queue
+        Collections.swap(queue.getQueuedSongs(), previousIndex - (queue.getHistorySongs().size() + 1), currentIndex - (queue.getHistorySongs().size() + 1));
+      }
+    }
+
+    return new UpdateQueueAndHistoryCommand(getSongsFromQueue(session), getSongsFromHistory(session));
+  }
+
   @MessageMapping("/sessions/{sessionId}/commands/loop/{loopMode}")
   @SendTo("/topic/sessions/{sessionId}")
   public Command loop(@DestinationVariable long sessionId, @DestinationVariable boolean loopMode, String message) throws Exception {
@@ -140,18 +180,18 @@ public class PlayerControlsController {
     }
     return new NopCommand();
   }
-  
+
   @MessageMapping("/sessions/{sessionId}/commands/deleteSongFromQueue/{queueIndex}/{type}")
   @SendTo("/topic/sessions/{sessionId}")
   public Command deleteSongFromQueue(@DestinationVariable long sessionId, @DestinationVariable int queueIndex, @DestinationVariable String type, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + queueIndex + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    switch(type){
-    case "queue":
+    switch (type) {
+      case "queue":
         sessionController.deleteSongFromQueue(session, queueIndex);
         System.out.println("removed from queue");
         return new UpdateQueueCommand(getSongsFromQueue(session));
-    case "history":
+      case "history":
         sessionController.deleteSongFromHistory(session, queueIndex);
         System.out.println("removed from history");
         return new UpdateHistoryCommand(getSongsFromHistory(session));

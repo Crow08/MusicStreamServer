@@ -270,8 +270,6 @@ public class SongResource {
                 .collect(Collectors.toList()))
         );
     songRepository.delete(song);
-    //maybe add return with ResponseEntity, but I don't know how to catch a server error
-    //might work with checking for that song after deletion?
   }
   
   @PutMapping(path = "/editSong")
