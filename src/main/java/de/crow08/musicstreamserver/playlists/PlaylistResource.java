@@ -78,9 +78,9 @@ public class PlaylistResource {
     playlist.get().getSongs().addAll(songsToAdd);
     playlistRepository.save(playlist.get());
     if (song_ids.length != songsToAdd.size()) {
-      return ResponseEntity.ok().body(songsToAdd.size() + " of " + song_ids.length + "songs added.");
+      return ResponseEntity.ok().body(songsToAdd.size() + " of " + song_ids.length + " songs added");
     }
-    return new ResponseEntity<>(HttpStatus.OK);
+    return ResponseEntity.ok().body("Successfully added "+ song_ids.length + " songs");
   }
 
   @PostMapping(path = "/")
