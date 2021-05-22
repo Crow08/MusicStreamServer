@@ -1,15 +1,15 @@
 package de.crow08.musicstreamserver.wscommunication;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.crow08.musicstreamserver.queue.Queue;
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
 import de.crow08.musicstreamserver.song.MinimalSong;
 import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.users.User;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
+import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.NopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.PauseCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.ResumeCommand;
@@ -111,6 +111,19 @@ public class PlayerControlsController {
     long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
     return new JoinCommand(userId, minSong, getSongsFromQueue(session), getSongsFromHistory(session),
         session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
+  }
+
+  @MessageMapping("/sessions/{sessionId}/commands/leave/{userId}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command leave(@DestinationVariable long sessionId, @DestinationVariable long userId, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    Optional<User> disconnectedUser = session.getUsers().stream().filter(user -> user.getId() == userId).findFirst();
+    if (disconnectedUser.isPresent()) {
+      session.getUsers().remove(disconnectedUser.get());
+      return new LeaveCommand(userId);
+    }
+    return new NopCommand();
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/shuffle")
