@@ -272,6 +272,20 @@ public class SongResource {
     songRepository.delete(song);
   }
   
+  @PutMapping(path = "/deleteSongs")
+  public void deleteSongs(@RequestBody Song[] toBeDeletedSongs) {
+    for(Song toBeDeletedSong : toBeDeletedSongs) {
+      Song song = songRepository.findById(toBeDeletedSong.getId()).orElseThrow(()-> new RuntimeException("Song not found"));
+      song.getPlaylists().stream().forEach(playlist ->
+      playlist.setSongs(playlist.getSongs()
+          .stream()
+          .filter(song1 -> song1.getId() != song.getId())
+          .collect(Collectors.toList()))
+           );
+       songRepository.delete(song);
+    }
+  }
+  
   @PutMapping(path = "/editSong")
   public ResponseEntity<String> editSong(@RequestBody Song alteredSong) {
     Optional<Song> song = songRepository.findById(alteredSong.getId());
