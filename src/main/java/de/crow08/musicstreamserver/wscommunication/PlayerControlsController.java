@@ -6,6 +6,7 @@ import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
 import de.crow08.musicstreamserver.song.MinimalSong;
 import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.song.SongRepository;
 import de.crow08.musicstreamserver.users.User;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
@@ -25,6 +26,9 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -37,9 +41,9 @@ public class PlayerControlsController {
 
   private final SessionRepository sessionRepository;
   private final SessionController sessionController;
-
+  
   @Autowired
-  public PlayerControlsController(SessionRepository sessionRepository, SessionController sessionController) {
+  public PlayerControlsController(SessionRepository sessionRepository, SessionController sessionController, SongRepository songRepository) {
     this.sessionRepository = sessionRepository;
     this.sessionController = sessionController;
   }
@@ -220,6 +224,28 @@ public class PlayerControlsController {
       return new StartCommand(songId, startTime);
     }
     return new StopCommand();
+  }
+  
+  @MessageMapping("/sessions/{sessionId}/commands/addSongToQueue")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command addSongToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    ObjectMapper mapper = new ObjectMapper();
+    Song song = mapper.readValue(message, Song.class);
+    session.getQueue().getQueuedSongs().add(song);  
+    return new NopCommand();
+  }
+  
+  @MessageMapping("/sessions/{sessionId}/commands/addSongsToQueue")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command addSongsToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    ObjectMapper mapper = new ObjectMapper();
+    List<Song> songs = mapper.readValue(message, new TypeReference <List<Song>>() {});
+    session.getQueue().getQueuedSongs().addAll(songs);  
+    return new NopCommand();
   }
 
   private List<MinimalSong> getSongsFromQueue(Session session) {
