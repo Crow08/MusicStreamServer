@@ -254,12 +254,11 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
-    List<Song> songs = mapper.readValue(message, new TypeReference <List<Song>>() {});
-    songs.addAll(session.getQueue().getQueuedSongs());
-    session.getQueue().setQueuedSongs(songs);
+    Song song = mapper.readValue(message, Song.class);
+    session.getQueue().getQueuedSongs().add(0, song);  
     return new NopCommand();
   }
-
+  
   private List<MinimalSong> getSongsFromQueue(Session session) {
     return session.getQueue().getQueuedSongs().stream()
         .map(song -> new MinimalSong(song.getId(), song.getTitle()))
