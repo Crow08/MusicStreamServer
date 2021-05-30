@@ -247,6 +247,18 @@ public class PlayerControlsController {
     session.getQueue().getQueuedSongs().addAll(songs);  
     return new NopCommand();
   }
+  
+  @MessageMapping("/sessions/{sessionId}/commands/playSongNext")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command playSongNext(@DestinationVariable long sessionId, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    ObjectMapper mapper = new ObjectMapper();
+    List<Song> songs = mapper.readValue(message, new TypeReference <List<Song>>() {});
+    songs.addAll(session.getQueue().getQueuedSongs());
+    session.getQueue().setQueuedSongs(songs);
+    return new NopCommand();
+  }
 
   private List<MinimalSong> getSongsFromQueue(Session session) {
     return session.getQueue().getQueuedSongs().stream()
