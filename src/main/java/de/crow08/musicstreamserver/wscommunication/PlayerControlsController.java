@@ -234,7 +234,7 @@ public class PlayerControlsController {
     ObjectMapper mapper = new ObjectMapper();
     Song song = mapper.readValue(message, Song.class);
     session.getQueue().getQueuedSongs().add(song);  
-    return new NopCommand();
+    return new UpdateQueueCommand();
   }
   
   @MessageMapping("/sessions/{sessionId}/commands/addSongsToQueue")
@@ -245,7 +245,7 @@ public class PlayerControlsController {
     ObjectMapper mapper = new ObjectMapper();
     List<Song> songs = mapper.readValue(message, new TypeReference <List<Song>>() {});
     session.getQueue().getQueuedSongs().addAll(songs);  
-    return new NopCommand();
+    return new UpdateQueueCommand();
   }
   
   @MessageMapping("/sessions/{sessionId}/commands/playSongNext")
@@ -256,7 +256,7 @@ public class PlayerControlsController {
     ObjectMapper mapper = new ObjectMapper();
     Song song = mapper.readValue(message, Song.class);
     session.getQueue().getQueuedSongs().add(0, song);  
-    return new NopCommand();
+    return new UpdateQueueCommand();
   }
   
   private List<MinimalSong> getSongsFromQueue(Session session) {
