@@ -1,11 +1,13 @@
 package de.crow08.musicstreamserver.sessions;
 
 import org.springframework.data.repository.Repository;
+import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+@Component
 public class SessionRepository implements Repository<Session, Long> {
 
   private final Map<Long, Session> repo = new HashMap<>();

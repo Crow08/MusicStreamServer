@@ -6,8 +6,8 @@ import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
 import de.crow08.musicstreamserver.song.MinimalSong;
 import de.crow08.musicstreamserver.song.Song;
-import de.crow08.musicstreamserver.song.SongRepository;
 import de.crow08.musicstreamserver.users.User;
+import de.crow08.musicstreamserver.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
@@ -41,11 +41,15 @@ public class PlayerControlsController {
 
   private final SessionRepository sessionRepository;
   private final SessionController sessionController;
-  
+  private UserRepository userRepository;
+
   @Autowired
-  public PlayerControlsController(SessionRepository sessionRepository, SessionController sessionController, SongRepository songRepository) {
+  public PlayerControlsController(SessionRepository sessionRepository,
+                                  SessionController sessionController,
+                                  UserRepository userRepository) {
     this.sessionRepository = sessionRepository;
     this.sessionController = sessionController;
+    this.userRepository = userRepository;
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/start")
@@ -113,8 +117,13 @@ public class PlayerControlsController {
     }
     long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
     long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
-    return new JoinCommand(userId, minSong, getSongsFromQueue(session), getSongsFromHistory(session),
-        session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
+    Optional<User> connectedUser = this.userRepository.findById(userId);
+    if (connectedUser.isPresent()) {
+      sessionController.addUserToSession(connectedUser.get(), session);
+      return new JoinCommand(userId, minSong, getSongsFromQueue(session), getSongsFromHistory(session),
+          session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
+    }
+    return new NopCommand();
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/leave/{userId}")
@@ -124,7 +133,7 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Optional<User> disconnectedUser = session.getUsers().stream().filter(user -> user.getId() == userId).findFirst();
     if (disconnectedUser.isPresent()) {
-      session.getUsers().remove(disconnectedUser.get());
+      sessionController.removeUserFromSession(disconnectedUser.get(), session);
       return new LeaveCommand(userId);
     }
     return new NopCommand();
@@ -204,14 +213,16 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + queueIndex + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     switch (type) {
-      case "queue":
+      case "queue" -> {
         sessionController.deleteSongFromQueue(session, queueIndex);
         System.out.println("removed from queue");
         return new UpdateQueueCommand(getSongsFromQueue(session));
-      case "history":
+      }
+      case "history" -> {
         sessionController.deleteSongFromHistory(session, queueIndex);
         System.out.println("removed from history");
         return new UpdateHistoryCommand(getSongsFromHistory(session));
+      }
     }
     return new NopCommand();
   }
@@ -225,7 +236,7 @@ public class PlayerControlsController {
     }
     return new StopCommand();
   }
-  
+
   @MessageMapping("/sessions/{sessionId}/commands/addSongToQueue")
   @SendTo("/topic/sessions/{sessionId}")
   public Command addSongToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
@@ -233,21 +244,22 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
     Song song = mapper.readValue(message, Song.class);
-    session.getQueue().getQueuedSongs().add(song);  
+    session.getQueue().getQueuedSongs().add(song);
     return new UpdateQueueCommand();
   }
-  
+
   @MessageMapping("/sessions/{sessionId}/commands/addSongsToQueue")
   @SendTo("/topic/sessions/{sessionId}")
   public Command addSongsToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
-    List<Song> songs = mapper.readValue(message, new TypeReference <List<Song>>() {});
-    session.getQueue().getQueuedSongs().addAll(songs);  
+    List<Song> songs = mapper.readValue(message, new TypeReference<>() {
+    });
+    session.getQueue().getQueuedSongs().addAll(songs);
     return new UpdateQueueCommand();
   }
-  
+
   @MessageMapping("/sessions/{sessionId}/commands/playSongNext")
   @SendTo("/topic/sessions/{sessionId}")
   public Command playSongNext(@DestinationVariable long sessionId, String message) throws Exception {
@@ -255,10 +267,10 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
     Song song = mapper.readValue(message, Song.class);
-    session.getQueue().getQueuedSongs().add(0, song);  
+    session.getQueue().getQueuedSongs().add(0, song);
     return new UpdateQueueCommand();
   }
-  
+
   private List<MinimalSong> getSongsFromQueue(Session session) {
     return session.getQueue().getQueuedSongs().stream()
         .map(song -> new MinimalSong(song.getId(), song.getTitle()))

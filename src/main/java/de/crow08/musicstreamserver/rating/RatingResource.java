@@ -40,11 +40,7 @@ public class RatingResource {
     User user = ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
     Song song = songRepository.findById(songId).orElseThrow(() -> new Exception("Unable to get rating of Song with Id " + songId));
     Optional<Rating> rating = ratingRepository.findById(new RatingId(user, song));
-    if (rating.isPresent()) {
-      return rating.get().getRatingValue();
-    } else {
-      return 0;
-    }
+    return rating.map(Rating::getRatingValue).orElse((short) 0);
   }
 
   @GetMapping(path = "/getSongRating/{songId}")
@@ -53,7 +49,7 @@ public class RatingResource {
     if (ratings.size() == 0) {
       return 0;
     }
-    Integer ratingSum = ratings.stream().mapToInt(Short::intValue).sum();
+    int ratingSum = ratings.stream().mapToInt(Short::intValue).sum();
     return ((float) ratingSum / ratings.size());
   }
 }

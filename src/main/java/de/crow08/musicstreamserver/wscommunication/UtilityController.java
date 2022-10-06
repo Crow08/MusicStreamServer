@@ -12,7 +12,7 @@ public class UtilityController {
   @MessageMapping("/util/latency/{user}")
   @SendTo("/topic/util/latency/{user}")
   public String ping(String message) {
-    System.out.println("Recieved: " + message);
+    System.out.println("Received: " + message);
     return String.valueOf(Instant.now().toEpochMilli());
   }
 }

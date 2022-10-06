@@ -3,19 +3,20 @@ package de.crow08.musicstreamserver.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @EnableWebSecurity
-public class SecurityConfig extends WebSecurityConfigurerAdapter implements WebMvcConfigurer {
+public class SecurityConfig implements WebMvcConfigurer {
 
   private final UserDetailsService userDetailsService;
   @Value("${client.host}")
@@ -25,13 +26,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements WebM
 
   @Autowired
   public SecurityConfig(@Qualifier("authenticatedUserService") UserDetailsService userDetailsService) {
-    super(true);
     this.userDetailsService = userDetailsService;
   }
 
-  @Override
-  public void configure(final WebSecurity web) {
-    web.ignoring().antMatchers(HttpMethod.OPTIONS).and().ignoring().antMatchers("/ws/**");
+  @Bean
+  WebSecurityCustomizer webSecurityCustomizer() {
+    return (web) -> web.ignoring().antMatchers(HttpMethod.OPTIONS).and().ignoring().antMatchers("/ws/**");
   }
 
   @Autowired
@@ -39,8 +39,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements WebM
     auth.userDetailsService(userDetailsService).passwordEncoder(PasswordEncoderFactories.createDelegatingPasswordEncoder());
   }
 
-  @Override
-  public void configure(final HttpSecurity http) throws Exception {
+  @Bean
+  SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.cors().and()
         .authorizeRequests()
         .anyRequest().fullyAuthenticated()
@@ -48,6 +48,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter implements WebM
         .httpBasic()
         .and()
         .csrf().disable();
+    return http.build();
   }
 
   @Override

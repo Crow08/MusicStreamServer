@@ -13,10 +13,11 @@ import org.springframework.stereotype.Controller;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Controller for sessions to manage session states and move songs and other data while the session is being worked with.
@@ -29,38 +30,49 @@ public class SessionController {
 
   private final WebSocketSessionController webSocketSessionController;
 
-  private final List<Session> sessions = new ArrayList<>();
-
   private final SimpMessagingTemplate simpMessagingTemplate;
 
   private final UserRepository userRepository;
+  private final SessionRepository sessionRepository;
 
   @Autowired
-  public SessionController(final WebSocketSessionController webSocketSessionController, SimpMessagingTemplate simpMessagingTemplate, UserRepository userRepository) {
+  public SessionController(final WebSocketSessionController webSocketSessionController,
+                           SimpMessagingTemplate simpMessagingTemplate,
+                           UserRepository userRepository,
+                           SessionRepository sessionRepository) {
     this.simpMessagingTemplate = simpMessagingTemplate;
     this.webSocketSessionController = webSocketSessionController;
     this.userRepository = userRepository;
+    this.sessionRepository = sessionRepository;
     setUpListeners();
 
   }
 
   private void setUpListeners() {
     webSocketSessionController.addDisconnectListener(userId -> {
-      for (Session session : sessions) {
+      for (Session session : sessionRepository.findAll()) {
         Optional<User> disconnectedUser = session.getUsers().stream().filter(user -> user.getId() == userId).findFirst();
         disconnectedUser.ifPresent(user -> {
-          session.getUsers().remove(user);
+          this.removeUserFromSession(user, session);
+          // this messgae has to be fired here to inform other Memoers about an unexpected disconnect
           simpMessagingTemplate.convertAndSend("/topic/sessions/" + session.getId(), new LeaveCommand(userId));
         });
       }
     });
     webSocketSessionController.addConnectListener((userId, sessionId) -> {
-      Optional<Session> session = sessions.stream().filter(ses -> sessionId == ses.getId()).findFirst();
+      Optional<Session> session = getSessionsAsStream().filter(ses -> sessionId == ses.getId()).findFirst();
       if (session.isPresent()) {
         Optional<User> user = userRepository.findById(userId);
-        user.ifPresent(value -> session.get().getUsers().add(value));
+        user.ifPresent(value -> {
+          this.addUserToSession(user.get(), session.get());
+        });
+
       }
     });
+  }
+
+  private Stream<Session> getSessionsAsStream() {
+    return StreamSupport.stream(sessionRepository.findAll().spliterator(), false);
   }
 
   /**
@@ -109,7 +121,7 @@ public class SessionController {
       queue.getHistorySongs().add(currentSong);
     }
     // If queue is empty and loopMode is active, dump history into queue.
-    if (queue.getQueuedSongs().size() <= 0 && session.isLoopMode() && !queue.getHistorySongs().isEmpty()) {
+    if (queue.getQueuedSongs().size() == 0 && session.isLoopMode() && !queue.getHistorySongs().isEmpty()) {
       queue.getQueuedSongs().addAll(queue.getHistorySongs());
       queue.getHistorySongs().clear();
     }
@@ -135,7 +147,7 @@ public class SessionController {
       queue.getQueuedSongs().add(0, currentSong);
     }
     // if history is empty and loop mode is active use the last song int the queue instead.
-    if (queue.getHistorySongs().size() <= 0 && session.isLoopMode() && !queue.getQueuedSongs().isEmpty()) {
+    if (queue.getHistorySongs().size() == 0 && session.isLoopMode() && !queue.getQueuedSongs().isEmpty()) {
       queue.setCurrentSong(queue.getQueuedSongs().get(queue.getQueuedSongs().size() - 1));
       queue.getQueuedSongs().remove(queue.getQueuedSongs().size() - 1);
       // if the history is not empty use the latest long.
@@ -174,7 +186,7 @@ public class SessionController {
 
   /**
    * Marks the song as paused and saves the progression time since the last resume or start of this song.
-   * the current start time will be nulled.
+   * the current start time will be set to null.
    *
    * @param session for which the song is being paused.
    * @return the total accumulated time across all pauses and resumes this song has been played for.
@@ -226,8 +238,8 @@ public class SessionController {
   /**
    * Deletes song from the current queue.
    *
-   * @param session to delete from.
-   * @param song    to delete.
+   * @param session    to delete from.
+   * @param queueIndex to delete.
    */
   public void deleteSongFromQueue(Session session, int queueIndex) {
     session.getQueue().getQueuedSongs().remove(queueIndex);
@@ -236,8 +248,8 @@ public class SessionController {
   /**
    * Deletes song from the current history.
    *
-   * @param session to delete from.
-   * @param song    to delete.
+   * @param session      to delete from.
+   * @param historyIndex to delete.
    */
   public void deleteSongFromHistory(Session session, int historyIndex) {
     session.getQueue().getHistorySongs().remove(historyIndex);
@@ -245,7 +257,19 @@ public class SessionController {
 
   public Session createNewSession(String name) {
     Session session = new Session(name);
-    sessions.add(session);
+    sessionRepository.save(session);
     return session;
+  }
+
+  public void addUserToSession(User newUser, Session session) {
+    if(session.getUsers().stream().noneMatch(user -> user.getId() == newUser.getId())) {
+      session.getUsers().add(newUser);
+      sessionRepository.save(session);
+    }
+  }
+
+  public void removeUserFromSession(User oldUser, Session session) {
+    session.getUsers().remove(oldUser);
+    sessionRepository.save(session);
   }
 }

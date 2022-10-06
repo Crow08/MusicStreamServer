@@ -52,6 +52,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -221,7 +222,7 @@ public class SongResource {
 
   @GetMapping("/{id}/data")
   @PreSignedUrlEnabled
-  public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
+  public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
     if (song.isPresent()) {
       File origFile = new File(this.storagePath.toAbsolutePath() + song.get().getPath());
@@ -248,7 +249,7 @@ public class SongResource {
   public List<Song> getSongsByArtist(@PathVariable String[] keyword) {
     List<Song> songs = songRepository.findByArtist(keyword);
     System.out.println(songs.size());
-    System.out.println(keyword);
+    System.out.println(Arrays.toString(keyword));
     return songs;
   }
 
@@ -256,14 +257,14 @@ public class SongResource {
   public List<Song> getSongsByGenre(@PathVariable String[] keyword) {
     List<Song> songs = songRepository.findByGenre(keyword);
     System.out.println(songs.size());
-    System.out.println(keyword);
+    System.out.println(Arrays.toString(keyword));
     return songs;
   }
 
   @PutMapping(path = "/deleteSongById/{songId}")
   public void deleteSongById(@PathVariable Long songId) {
     Song song = songRepository.findById(songId).orElseThrow(()-> new RuntimeException("Song not found"));
-    song.getPlaylists().stream().forEach(playlist ->
+    song.getPlaylists().forEach(playlist ->
             playlist.setSongs(playlist.getSongs()
                 .stream()
                 .filter(song1 -> song1.getId() != song.getId())
@@ -271,12 +272,12 @@ public class SongResource {
         );
     songRepository.delete(song);
   }
-  
+
   @PutMapping(path = "/deleteSongs")
   public void deleteSongs(@RequestBody Song[] toBeDeletedSongs) {
     for(Song toBeDeletedSong : toBeDeletedSongs) {
       Song song = songRepository.findById(toBeDeletedSong.getId()).orElseThrow(()-> new RuntimeException("Song not found"));
-      song.getPlaylists().stream().forEach(playlist ->
+      song.getPlaylists().forEach(playlist ->
       playlist.setSongs(playlist.getSongs()
           .stream()
           .filter(song1 -> song1.getId() != song.getId())
@@ -285,7 +286,7 @@ public class SongResource {
        songRepository.delete(song);
     }
   }
-  
+
   @PutMapping(path = "/editSong")
   public ResponseEntity<String> editSong(@RequestBody Song alteredSong) {
     Optional<Song> song = songRepository.findById(alteredSong.getId());

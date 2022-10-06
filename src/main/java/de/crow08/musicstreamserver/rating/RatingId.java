@@ -44,14 +44,8 @@ public class RatingId implements Serializable {
   }
 
   @Override
-  public int hashCode() {
-    return super.hashCode();
-  }
-
-  @Override
   public boolean equals(Object obj) {
-    if (obj instanceof RatingId) {
-      RatingId ratingId = (RatingId) obj;
+    if (obj instanceof RatingId ratingId) {
       return ratingId.user.getId() == this.user.getId() && ratingId.song.getId() == song.getId();
     }
     return false;

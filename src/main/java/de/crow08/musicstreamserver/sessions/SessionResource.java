@@ -42,7 +42,6 @@ public class SessionResource {
   @PostMapping(path = "/")
   public @ResponseBody long createNewSession(@RequestBody String name) {
     Session session = this.sessionController.createNewSession(name);
-    sessionRepository.save(session);
     return session.getId();
   }
 
