@@ -24,6 +24,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +47,7 @@ import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.websocket.server.PathParam;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -184,8 +189,29 @@ public class SongResource {
   }
 
   @GetMapping("/all")
-  public @ResponseBody Iterable<Song> getSessions() {
-    return songRepository.findAll();
+  public @ResponseBody Page<Song> getSessions(
+      @PathParam("sort") Optional<String> sort,
+      @PathParam("order") Optional<String> order,
+      @PathParam("page") Optional<Integer> page,
+      @PathParam("pageSize") Optional<Integer> pageSize
+  ) {
+    Pageable pageable;
+    if (page.isPresent() && pageSize.isPresent()) {
+      if (sort.isPresent() && order.isPresent()) {
+        if (order.get().equalsIgnoreCase("desc")) {
+          pageable = PageRequest.of(page.get(), pageSize.get(), Sort.by(sort.get()).descending());
+        } else {
+          pageable = PageRequest.of(page.get(), pageSize.get(), Sort.by(sort.get()).ascending());
+        }
+      } else {
+        pageable = PageRequest.of(page.get(), pageSize.get());
+      }
+    } else {
+      pageable = PageRequest.of(0, Integer.MAX_VALUE);
+    }
+    Page<Song> result = songRepository.findAll(pageable);
+    System.out.println(result.getContent().stream().map(Song::getTitle).toList());
+    return result;
   }
 
   @GetMapping("/{id}")
@@ -263,27 +289,27 @@ public class SongResource {
 
   @PutMapping(path = "/deleteSongById/{songId}")
   public void deleteSongById(@PathVariable Long songId) {
-    Song song = songRepository.findById(songId).orElseThrow(()-> new RuntimeException("Song not found"));
+    Song song = songRepository.findById(songId).orElseThrow(() -> new RuntimeException("Song not found"));
     song.getPlaylists().forEach(playlist ->
-            playlist.setSongs(playlist.getSongs()
-                .stream()
-                .filter(song1 -> song1.getId() != song.getId())
-                .collect(Collectors.toList()))
-        );
+        playlist.setSongs(playlist.getSongs()
+            .stream()
+            .filter(song1 -> song1.getId() != song.getId())
+            .collect(Collectors.toList()))
+    );
     songRepository.delete(song);
   }
 
   @PutMapping(path = "/deleteSongs")
   public void deleteSongs(@RequestBody Song[] toBeDeletedSongs) {
-    for(Song toBeDeletedSong : toBeDeletedSongs) {
-      Song song = songRepository.findById(toBeDeletedSong.getId()).orElseThrow(()-> new RuntimeException("Song not found"));
+    for (Song toBeDeletedSong : toBeDeletedSongs) {
+      Song song = songRepository.findById(toBeDeletedSong.getId()).orElseThrow(() -> new RuntimeException("Song not found"));
       song.getPlaylists().forEach(playlist ->
-      playlist.setSongs(playlist.getSongs()
-          .stream()
-          .filter(song1 -> song1.getId() != song.getId())
-          .collect(Collectors.toList()))
-           );
-       songRepository.delete(song);
+          playlist.setSongs(playlist.getSongs()
+              .stream()
+              .filter(song1 -> song1.getId() != song.getId())
+              .collect(Collectors.toList()))
+      );
+      songRepository.delete(song);
     }
   }
 
@@ -301,7 +327,7 @@ public class SongResource {
       System.out.println(originalSong.getArtist());
       System.out.println(originalSong.getGenres());
       songRepository.save(originalSong);
-    }else {
+    } else {
       return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
     return new ResponseEntity<>(HttpStatus.OK);

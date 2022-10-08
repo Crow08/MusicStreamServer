@@ -262,7 +262,7 @@ public class SessionController {
   }
 
   public void addUserToSession(User newUser, Session session) {
-    if(session.getUsers().stream().noneMatch(user -> user.getId() == newUser.getId())) {
+    if (session.getUsers().stream().noneMatch(user -> user.getId() == newUser.getId())) {
       session.getUsers().add(newUser);
       sessionRepository.save(session);
     }

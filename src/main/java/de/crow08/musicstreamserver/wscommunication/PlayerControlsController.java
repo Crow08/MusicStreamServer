@@ -1,5 +1,7 @@
 package de.crow08.musicstreamserver.wscommunication;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.crow08.musicstreamserver.queue.Queue;
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
@@ -26,9 +28,6 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -41,7 +40,7 @@ public class PlayerControlsController {
 
   private final SessionRepository sessionRepository;
   private final SessionController sessionController;
-  private UserRepository userRepository;
+  private final UserRepository userRepository;
 
   @Autowired
   public PlayerControlsController(SessionRepository sessionRepository,
