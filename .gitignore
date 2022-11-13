@@ -39,3 +39,6 @@ build/
 *.ogg
 *.wav
 *.wma
+*.mp4
+*.mkv
+*.mpd
