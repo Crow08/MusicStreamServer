@@ -14,6 +14,7 @@ import de.crow08.musicstreamserver.playlists.PlaylistRepository;
 import de.crow08.musicstreamserver.tag.Tag;
 import de.crow08.musicstreamserver.tag.TagRepository;
 import de.crow08.musicstreamserver.utils.TrimmedAudioInputStream;
+import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotReadException;
 import org.jaudiotagger.audio.exceptions.InvalidAudioFrameException;
@@ -58,6 +59,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -98,7 +100,7 @@ public class SongResource {
     storagePath = Paths.get(clientStoragePath);
   }
 
-  @PostMapping("/")
+  @PostMapping("/upload/")
   @Transactional
   public @ResponseBody ResponseEntity<Resource> uploadSong(@RequestParam("files") MultipartFile[] files,
                                                            @RequestParam("data") String data) throws IOException {
@@ -173,7 +175,7 @@ public class SongResource {
 
       // Add to playlist
       for (long playlistId : playlistIds) {
-        if (playlistId > 1) { // Don't add To playlist with ID: 1
+        if (playlistId > 1) { // Don't add to playlist with ID: 1
           Optional<Playlist> playlist = playlistRepository.findById(playlistId);
           playlist.ifPresent(pl -> {
             if (pl.getSongs() == null) {
@@ -186,6 +188,128 @@ public class SongResource {
       }
     }
     return new ResponseEntity<>(HttpStatus.OK);
+  }
+
+  @PostMapping("/import/")
+  @Transactional
+  public @ResponseBody ResponseEntity<Resource> importSongs(@RequestBody String data) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode dataNode = mapper.readTree(data);
+
+    ArrayList<Song> newSongs = new ArrayList<>();
+    HashMap<String, Artist> artistCache = new HashMap<>();
+    HashMap<String, Album>  albumCache = new HashMap<>();
+    for (JsonNode songNode : dataNode.get("songs")) {
+      if(!this.isValidImportSong(songNode)){
+        System.err.println("Error: Import is skipping invalid song.");
+        continue;
+      }
+
+      JsonNode artistNode = songNode.get("artist");
+      long artistId = 1; // 1 is Fallback
+      if (artistNode.get("id") != null && artistNode.get("id").isNumber()) {
+        artistId = artistNode.get("id").longValue();
+      } else if (artistNode.get("name") != null && artistNode.get("name").isTextual()) {
+        String artistName = artistNode.get("name").asText();
+        if (artistCache.containsKey(artistName)) {
+          artistId = artistCache.get(artistName).getId();
+        } else {
+          List<Artist> artistQueryResult = artistRepository.findByName(artistName);
+          Artist artist = artistQueryResult.size() == 0
+              ? artistRepository.save(new Artist(artistName))
+              : artistQueryResult.get(0);
+          artistId = artist.getId();
+          artistCache.put(artistName, artist);
+        }
+      }
+
+      JsonNode albumNode = songNode.get("album");
+      long albumId = 1; // 1 is Fallback
+      if (albumNode.get("id") != null && albumNode.get("id").isNumber()) {
+        albumId = albumNode.get("id").longValue();
+      } else if (albumNode.get("name") != null && albumNode.get("name").isTextual()) {
+        String albumName = albumNode.get("name").asText();
+        if (albumCache.containsKey(albumName)) {
+          albumId = albumCache.get(albumName).getId();
+        } else {
+          List<Album> albumQueryResult = albumRepository.findByName(albumName);
+          Album album = albumQueryResult.size() == 0
+              ? albumRepository.save(new Album(albumName))
+              : albumQueryResult.get(0);
+          albumId = album.getId();
+          albumCache.put(albumName, album);
+        }
+      }
+
+      JsonNode genresNode = songNode.get("genres");
+      List<Long> genreIds = new ArrayList<>();
+      if (genresNode.isArray()) {
+        for (JsonNode genreNode : genresNode) {
+          genreIds.add(genreNode.get("id").asLong());
+        }
+      }
+      JsonNode tagsNode = songNode.get("tags");
+      List<Long> tagIds = new ArrayList<>();
+      if (tagsNode.isArray()) {
+        for (JsonNode tagNode : tagsNode) {
+          tagIds.add(tagNode.get("id").asLong());
+        }
+      }
+
+      Optional<Artist> artist = artistRepository.findById(artistId);
+      Optional<Album> album = albumRepository.findById(albumId);
+      Iterable<Genre> genres = genreRepository.findAllById(genreIds);
+      Iterable<Tag> tags = tagRepository.findAllById(tagIds);
+
+
+      // Create new song
+      Song song = new Song(songNode.get("title").asText(), songNode.get("uri").asText());
+      // Add artist
+      song.setArtist(artist.orElse(null));
+      // Add album
+      song.setAlbum(album.orElse(null));
+      // Add genres
+      Set<Genre> genresList = new HashSet<>();
+      genres.forEach(genresList::add);
+      song.setGenres(genresList);
+      // Add tags
+      Set<Tag> tagsList = new HashSet<>();
+      tags.forEach(tagsList::add);
+      song.setTags(tagsList);
+      // Save song
+      newSongs.add(songRepository.save(song));
+    }
+
+    List<Long> playlistIds = new ArrayList<>();
+    if (dataNode.get("playlists").isArray()) {
+      for (JsonNode jsonNode : dataNode.get("playlists")) {
+        playlistIds.add(jsonNode.asLong());
+      }
+    }
+
+    // Add to playlist
+    for (long playlistId : playlistIds) {
+      if (playlistId > 1) { // Don't add to playlist with ID: 1
+        Optional<Playlist> playlist = playlistRepository.findById(playlistId);
+        playlist.ifPresent(pl -> {
+          if (pl.getSongs() == null) {
+            pl.setSongs(new ArrayList<>());
+          }
+          pl.getSongs().addAll(newSongs);
+          playlistRepository.save(pl);
+        });
+      }
+    }
+
+    return new ResponseEntity<>(HttpStatus.OK);
+  }
+
+  private boolean isValidImportSong(JsonNode songNode) {
+    return songNode.has("title")
+        && songNode.has("artist")
+        && songNode.has("album")
+        && songNode.has("genres")
+        && songNode.has("tags");
   }
 
   @GetMapping("/all")
@@ -225,11 +349,15 @@ public class SongResource {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
     long offsetMillis = Long.parseLong(offset);
     if (song.isPresent()) {
-      File origFile = new File(storagePath.toAbsolutePath() + song.get().getPath());
+      if (song.get().getUri().startsWith("spotify")) {
+        System.err.println("Error: Tried to access song data for a spotify resource.");
+        return new ResponseEntity<>(HttpStatus.UNPROCESSABLE_ENTITY);
+      }
+      File origFile = new File(storagePath.toAbsolutePath() + song.get().getUri());
       File outFile;
-      if (song.get().getPath().endsWith(".wav")) {
+      if (song.get().getUri().endsWith(".wav")) {
         outFile = cutWaveFile(origFile, offsetMillis);
-      } else if (song.get().getPath().endsWith(".mp3")) {
+      } else if (song.get().getUri().endsWith(".mp3")) {
         outFile = cutMP3File(origFile, offsetMillis);
       } else {
         return new ResponseEntity<>(HttpStatus.UNPROCESSABLE_ENTITY);
@@ -251,7 +379,11 @@ public class SongResource {
   public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException {
     Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
     if (song.isPresent()) {
-      File origFile = new File(this.storagePath.toAbsolutePath() + song.get().getPath());
+      if (song.get().getUri().startsWith("spotify")) {
+        System.err.println("Error: Tried to access song data for a spotify resource.");
+        return new ResponseEntity<>(HttpStatus.UNPROCESSABLE_ENTITY);
+      }
+      File origFile = new File(this.storagePath.toAbsolutePath() + song.get().getUri());
       InputStreamResource stream = new InputStreamResource(new FileInputStream(origFile));
       return ResponseEntity.ok()
           .contentLength(origFile.length())

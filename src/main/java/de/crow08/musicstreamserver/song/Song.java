@@ -48,7 +48,7 @@ public class Song {
   private Set<Tag> tags;
 
   @Column(nullable = false)
-  private String path;
+  private String uri;
 
   @ManyToMany(mappedBy = "songs", fetch = FetchType.LAZY)
   @JsonIgnore
@@ -62,9 +62,9 @@ public class Song {
     this.id = id;
   }
 
-  public Song(String title, String path) {
+  public Song(String title, String uri) {
     this.title = title;
-    this.path = path;
+    this.uri = uri;
   }
 
   public long getId() {
@@ -115,12 +115,12 @@ public class Song {
     this.tags = tags;
   }
 
-  public String getPath() {
-    return path;
+  public String getUri() {
+    return uri;
   }
 
-  public void setPath(String path) {
-    this.path = path;
+  public void setUri(String path) {
+    this.uri = path;
   }
 
   public Set<Playlist> getPlaylists() {

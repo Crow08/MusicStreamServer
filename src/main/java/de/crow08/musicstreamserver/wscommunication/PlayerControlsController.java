@@ -119,8 +119,9 @@ public class PlayerControlsController {
     Optional<User> connectedUser = this.userRepository.findById(userId);
     if (connectedUser.isPresent()) {
       sessionController.addUserToSession(connectedUser.get(), session);
+      boolean isVideo = minSong != null && minSong.getTitle() != null && minSong.getTitle().startsWith("video_"); //TODO: introduce media type.
       return new JoinCommand(userId, minSong, getSongsFromQueue(session), getSongsFromHistory(session),
-          session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
+          session.getSessionState(), session.isLoopMode(), startTime, startOffset, isVideo,session.getUsers());
     }
     return new NopCommand();
   }
@@ -231,7 +232,8 @@ public class PlayerControlsController {
     if (currentSong.isPresent()) {
       long songId = currentSong.get().getId();
       long startTime = sessionController.start(session).toEpochMilli();
-      return new StartCommand(songId, startTime);
+      boolean isVideo = currentSong.get().getTitle() != null && currentSong.get().getTitle().startsWith("video_"); //TODO: introduce media type.
+      return new StartCommand(songId, startTime, isVideo);
     }
     return new StopCommand();
   }

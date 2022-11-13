@@ -18,12 +18,14 @@ public class JoinCommand extends Command {
   long time;
   long startOffset;
 
+  boolean isVideo;
+
   public JoinCommand() {
     super("Join");
   }
 
   public JoinCommand(long userId, MinimalSong currentSong, List<MinimalSong> queue, List<MinimalSong> history,
-                     Session.SessionState sessionState, boolean loopMode, long time, long startOffset, List<User> sessionUsers) {
+                     Session.SessionState sessionState, boolean loopMode, long time, long startOffset, boolean isVideo, List<User> sessionUsers) {
     super("Join");
     this.userId = userId;
     this.currentSong = currentSong;
@@ -34,6 +36,7 @@ public class JoinCommand extends Command {
     this.time = time;
     this.startOffset = startOffset;
     this.sessionUsers = sessionUsers;
+    this.isVideo = isVideo;
   }
 
   public long getUserId() {
@@ -98,6 +101,14 @@ public class JoinCommand extends Command {
 
   public void setStartOffset(long startOffset) {
     this.startOffset = startOffset;
+  }
+
+  public boolean getIsVideo() {
+    return isVideo;
+  }
+
+  public void setIsVideo(boolean isVideo) {
+    this.isVideo = isVideo;
   }
 
   public List<User> getSessionUsers() {

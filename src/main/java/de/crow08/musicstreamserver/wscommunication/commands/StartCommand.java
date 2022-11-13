@@ -4,10 +4,13 @@ public class StartCommand extends Command {
   long songId;
   long time;
 
-  public StartCommand(long songId, long time) {
+  boolean isVideo;
+
+  public StartCommand(long songId, long time, boolean isVideo) {
     super("Start");
     this.songId = songId;
     this.time = time;
+    this.isVideo = isVideo;
   }
 
   public StartCommand() {
@@ -28,5 +31,13 @@ public class StartCommand extends Command {
 
   public void setTime(long time) {
     this.time = time;
+  }
+
+  public boolean getIsVideo() {
+    return isVideo;
+  }
+
+  public void setIsVideo(boolean isVideo) {
+    this.isVideo = isVideo;
   }
 }
