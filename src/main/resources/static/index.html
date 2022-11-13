@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>MusicStreamClient</title>
-  <base href="/music-stream-server/"><!--Kevin, you need to change this to "." before deployment! Do not forget-->
+  <base href="."><!--Kevin, you need to change this to "." before deployment! Do not forget-->
   <meta content="width=device-width, initial-scale=1" name="viewport">
   <link href="favicon.ico" rel="icon" type="image/x-icon">
   <link href="https://fonts.gstatic.com" rel="preconnect">
@@ -235,16 +235,12 @@
           margin: 0;
       }
   </style>
-  <link href="styles.css" media="print" onload="this.media='all'" rel="stylesheet">
-  <noscript>
-    <link href="styles.css" rel="stylesheet">
-  </noscript>
 </head>
 <body class="mat-typography">
   <app-root></app-root>
-  <script defer src="runtime.js"></script>
-  <script defer src="polyfills.js"></script>
-  <script defer src="main.js"></script>
-
+  <video controls>
+    <source src="myvideo.mpd">
+    <source src="v_dashinit.mp4">
+  </video>
 </body>
 </html>

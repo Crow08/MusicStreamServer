@@ -1,6 +1,6 @@
 package de.crow08.musicstreamserver.album;
 
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -21,7 +21,7 @@ public class Album {
   private String name;
 
   @OneToMany(mappedBy = "artist")
-  private List<Song> songs;
+  private List<Media> songs;
 
   @Deprecated
   public Album() {

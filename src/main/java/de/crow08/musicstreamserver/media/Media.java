@@ -1,4 +1,4 @@
-package de.crow08.musicstreamserver.song;
+package de.crow08.musicstreamserver.media;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import de.crow08.musicstreamserver.album.Album;
@@ -20,7 +20,7 @@ import javax.persistence.ManyToOne;
 import java.util.Set;
 
 @Entity
-public class Song {
+public class Media {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,14 +55,14 @@ public class Song {
   private Set<Playlist> playlists;
 
   @Deprecated
-  public Song() {
+  public Media() {
   }
 
-  public Song(long id) {
+  public Media(long id) {
     this.id = id;
   }
 
-  public Song(String title, String uri) {
+  public Media(String title, String uri) {
     this.title = title;
     this.uri = uri;
   }

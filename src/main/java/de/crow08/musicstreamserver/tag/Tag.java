@@ -1,6 +1,6 @@
 package de.crow08.musicstreamserver.tag;
 
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -21,7 +21,7 @@ public class Tag {
   private String name;
 
   @ManyToMany(mappedBy = "tags")
-  private Set<Song> songs;
+  private Set<Media> media;
 
   @Deprecated
   public Tag() {

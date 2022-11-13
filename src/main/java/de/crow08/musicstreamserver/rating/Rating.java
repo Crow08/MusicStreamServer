@@ -1,6 +1,6 @@
 package de.crow08.musicstreamserver.rating;
 
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
 import de.crow08.musicstreamserver.users.User;
 
 import javax.persistence.EmbeddedId;
@@ -19,8 +19,8 @@ public class Rating {
   public Rating() {
   }
 
-  public Rating(User user, Song song, short ratingValue) {
-    this.id = new RatingId(user, song);
+  public Rating(User user, Media media, short ratingValue) {
+    this.id = new RatingId(user, media);
     this.ratingValue = ratingValue;
   }
 

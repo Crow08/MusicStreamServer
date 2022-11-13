@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.rating;
 
-import de.crow08.musicstreamserver.song.Song;
-import de.crow08.musicstreamserver.song.SongRepository;
+import de.crow08.musicstreamserver.media.Media;
+import de.crow08.musicstreamserver.media.MediaRepository;
 import de.crow08.musicstreamserver.users.User;
 import de.crow08.musicstreamserver.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,26 +20,26 @@ import java.util.Optional;
 public class RatingResource {
 
   final RatingRepository ratingRepository;
-  private final SongRepository songRepository;
+  private final MediaRepository mediaRepository;
 
   @Autowired
-  public RatingResource(RatingRepository ratingRepository, UserRepository userRepository, SongRepository songRepository) {
+  public RatingResource(RatingRepository ratingRepository, UserRepository userRepository, MediaRepository mediaRepository) {
     this.ratingRepository = ratingRepository;
-    this.songRepository = songRepository;
+    this.mediaRepository = mediaRepository;
   }
 
   @PutMapping(path = "/{songId}/addUserRating/{userRating}")
   public void addUserRating(@PathVariable Long songId, @PathVariable short userRating) throws Exception {
     User user = ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-    Song song = songRepository.findById(songId).orElseThrow(() -> new Exception("Unable to apply rating: Song with Id " + songId + " not found"));
-    ratingRepository.save(new Rating(user, song, userRating));
+    Media media = mediaRepository.findById(songId).orElseThrow(() -> new Exception("Unable to apply rating: Song with Id " + songId + " not found"));
+    ratingRepository.save(new Rating(user, media, userRating));
   }
 
   @GetMapping(path = "getUserRating/{songId}")
   public short getUserRating(@PathVariable Long songId) throws Exception {
     User user = ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-    Song song = songRepository.findById(songId).orElseThrow(() -> new Exception("Unable to get rating of Song with Id " + songId));
-    Optional<Rating> rating = ratingRepository.findById(new RatingId(user, song));
+    Media media = mediaRepository.findById(songId).orElseThrow(() -> new Exception("Unable to get rating of Song with Id " + songId));
+    Optional<Rating> rating = ratingRepository.findById(new RatingId(user, media));
     return rating.map(Rating::getRatingValue).orElse((short) 0);
   }
 

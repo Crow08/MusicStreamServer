@@ -1,4 +1,4 @@
-package de.crow08.musicstreamserver.song;
+package de.crow08.musicstreamserver.media;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,7 +14,6 @@ import de.crow08.musicstreamserver.playlists.PlaylistRepository;
 import de.crow08.musicstreamserver.tag.Tag;
 import de.crow08.musicstreamserver.tag.TagRepository;
 import de.crow08.musicstreamserver.utils.TrimmedAudioInputStream;
-import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotReadException;
 import org.jaudiotagger.audio.exceptions.InvalidAudioFrameException;
@@ -68,10 +67,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/songs")
-public class SongResource {
+@RequestMapping("/media")
+public class MediaResource {
 
-  private final SongRepository songRepository;
+  private final MediaRepository mediaRepository;
 
   private final ArtistRepository artistRepository;
 
@@ -84,14 +83,14 @@ public class SongResource {
   private final Path storagePath;
 
   @Autowired
-  public SongResource(SongRepository songRepository,
-                      ArtistRepository artistRepository,
-                      PlaylistRepository playlistRepository,
-                      GenreRepository genreRepository,
-                      AlbumRepository albumRepository,
-                      TagRepository tagRepository,
-                      @Value("${client.storage-path}") String clientStoragePath) {
-    this.songRepository = songRepository;
+  public MediaResource(MediaRepository mediaRepository,
+                       ArtistRepository artistRepository,
+                       PlaylistRepository playlistRepository,
+                       GenreRepository genreRepository,
+                       AlbumRepository albumRepository,
+                       TagRepository tagRepository,
+                       @Value("${client.storage-path}") String clientStoragePath) {
+    this.mediaRepository = mediaRepository;
     this.artistRepository = artistRepository;
     this.playlistRepository = playlistRepository;
     this.genreRepository = genreRepository;
@@ -148,7 +147,7 @@ public class SongResource {
       String songPath = "/songs/" + artistId;
       Path fullPath = Paths.get(this.storagePath.toString(), songPath);
       // Create new song
-      Song song = new Song(fileName, songPath + "/" + fileName);
+      Media song = new Media(fileName, songPath + "/" + fileName);
       // Add artist
       song.setArtist(artist.orElse(null));
       // Add album
@@ -162,13 +161,13 @@ public class SongResource {
       tags.forEach(tagsList::add);
       song.setTags(tagsList);
       // Save song
-      songRepository.save(song);
+      mediaRepository.save(song);
 
       //write Song file
       Files.createDirectories(fullPath);
       File file = new File(fullPath.toAbsolutePath().toString(), fileName);
       if (!file.createNewFile()) {
-        songRepository.delete(song);
+        mediaRepository.delete(song);
         return new ResponseEntity<>(HttpStatus.CONFLICT);
       }
       mpFile.transferTo(file);
@@ -196,7 +195,7 @@ public class SongResource {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode dataNode = mapper.readTree(data);
 
-    ArrayList<Song> newSongs = new ArrayList<>();
+    ArrayList<Media> newSongs = new ArrayList<>();
     HashMap<String, Artist> artistCache = new HashMap<>();
     HashMap<String, Album>  albumCache = new HashMap<>();
     for (JsonNode songNode : dataNode.get("songs")) {
@@ -263,7 +262,7 @@ public class SongResource {
 
 
       // Create new song
-      Song song = new Song(songNode.get("title").asText(), songNode.get("uri").asText());
+      Media song = new Media(songNode.get("title").asText(), songNode.get("uri").asText());
       // Add artist
       song.setArtist(artist.orElse(null));
       // Add album
@@ -277,7 +276,7 @@ public class SongResource {
       tags.forEach(tagsList::add);
       song.setTags(tagsList);
       // Save song
-      newSongs.add(songRepository.save(song));
+      newSongs.add(mediaRepository.save(song));
     }
 
     List<Long> playlistIds = new ArrayList<>();
@@ -313,7 +312,7 @@ public class SongResource {
   }
 
   @GetMapping("/all")
-  public @ResponseBody Page<Song> getSessions(
+  public @ResponseBody Page<Media> getSessions(
       @PathParam("sort") Optional<String> sort,
       @PathParam("order") Optional<String> order,
       @PathParam("page") Optional<Integer> page,
@@ -333,20 +332,20 @@ public class SongResource {
     } else {
       pageable = PageRequest.of(0, Integer.MAX_VALUE);
     }
-    Page<Song> result = songRepository.findAll(pageable);
-    System.out.println(result.getContent().stream().map(Song::getTitle).toList());
+    Page<Media> result = mediaRepository.findAll(pageable);
+    System.out.println(result.getContent().stream().map(Media::getTitle).toList());
     return result;
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<Song> getSong(@PathVariable Long id) {
-    return songRepository.findById(id);
+  public @ResponseBody Optional<Media> getSong(@PathVariable Long id) {
+    return mediaRepository.findById(id);
   }
 
   @GetMapping("/{id}/data/{offset}")
   @PreSignedUrlEnabled
   public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id, @PathVariable String offset) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
-    Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
+    Optional<Media> song = this.mediaRepository.findById(Long.parseLong(id));
     long offsetMillis = Long.parseLong(offset);
     if (song.isPresent()) {
       if (song.get().getUri().startsWith("spotify")) {
@@ -377,7 +376,7 @@ public class SongResource {
   @GetMapping("/{id}/data")
   @PreSignedUrlEnabled
   public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id) throws IOException {
-    Optional<Song> song = this.songRepository.findById(Long.parseLong(id));
+    Optional<Media> song = this.mediaRepository.findById(Long.parseLong(id));
     if (song.isPresent()) {
       if (song.get().getUri().startsWith("spotify")) {
         System.err.println("Error: Tried to access song data for a spotify resource.");
@@ -395,25 +394,47 @@ public class SongResource {
     }
   }
 
+
+  @GetMapping("/video/data/{id}")
+  @PreSignedUrlEnabled
+  public @ResponseBody ResponseEntity<Resource> getVideoData(@PathVariable String id) throws IOException {
+    Optional<Media> song = this.mediaRepository.findById(Long.parseLong(id));
+    if (song.isPresent()) {
+      if (song.get().getUri().startsWith("spotify")) {
+        System.err.println("Error: Tried to access song data for a spotify resource.");
+        return new ResponseEntity<>(HttpStatus.UNPROCESSABLE_ENTITY);
+      }
+      File origFile = new File(this.storagePath.toAbsolutePath() + song.get().getUri());
+      InputStreamResource stream = new InputStreamResource(new FileInputStream(origFile));
+      return ResponseEntity.ok()
+          .contentLength(origFile.length())
+          .contentType(MediaType.valueOf("video/webm"))
+          .header("Accept-Ranges", "bytes")
+          .body(stream);
+    } else {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+  }
+
   @GetMapping(path = "/getSongsByKeyword/{keyword}")
-  public List<Song> getSongsByKeyword(@PathVariable String keyword) {
-    List<Song> songs = songRepository.findByTitleContains(keyword);
+  public List<Media> getSongsByKeyword(@PathVariable String keyword) {
+    List<Media> songs = mediaRepository.findByTitleContains(keyword);
     System.out.println(songs.size());
     System.out.println(keyword);
     return songs;
   }
 
   @GetMapping(path = "/getSongsByArtist/{keyword}")
-  public List<Song> getSongsByArtist(@PathVariable String[] keyword) {
-    List<Song> songs = songRepository.findByArtist(keyword);
+  public List<Media> getSongsByArtist(@PathVariable String[] keyword) {
+    List<Media> songs = mediaRepository.findByArtist(keyword);
     System.out.println(songs.size());
     System.out.println(Arrays.toString(keyword));
     return songs;
   }
 
   @GetMapping(path = "/getSongsByGenre/{keyword}")
-  public List<Song> getSongsByGenre(@PathVariable String[] keyword) {
-    List<Song> songs = songRepository.findByGenre(keyword);
+  public List<Media> getSongsByGenre(@PathVariable String[] keyword) {
+    List<Media> songs = mediaRepository.findByGenre(keyword);
     System.out.println(songs.size());
     System.out.println(Arrays.toString(keyword));
     return songs;
@@ -421,35 +442,35 @@ public class SongResource {
 
   @PutMapping(path = "/deleteSongById/{songId}")
   public void deleteSongById(@PathVariable Long songId) {
-    Song song = songRepository.findById(songId).orElseThrow(() -> new RuntimeException("Song not found"));
-    song.getPlaylists().forEach(playlist ->
+    Media media = mediaRepository.findById(songId).orElseThrow(() -> new RuntimeException("Song not found"));
+    media.getPlaylists().forEach(playlist ->
         playlist.setSongs(playlist.getSongs()
             .stream()
-            .filter(song1 -> song1.getId() != song.getId())
+            .filter(song1 -> song1.getId() != media.getId())
             .collect(Collectors.toList()))
     );
-    songRepository.delete(song);
+    mediaRepository.delete(media);
   }
 
   @PutMapping(path = "/deleteSongs")
-  public void deleteSongs(@RequestBody Song[] toBeDeletedSongs) {
-    for (Song toBeDeletedSong : toBeDeletedSongs) {
-      Song song = songRepository.findById(toBeDeletedSong.getId()).orElseThrow(() -> new RuntimeException("Song not found"));
-      song.getPlaylists().forEach(playlist ->
+  public void deleteSongs(@RequestBody Media[] toBeDeletedMedia) {
+    for (Media toBeDeleted : toBeDeletedMedia) {
+      Media media = mediaRepository.findById(toBeDeleted.getId()).orElseThrow(() -> new RuntimeException("Song not found"));
+      media.getPlaylists().forEach(playlist ->
           playlist.setSongs(playlist.getSongs()
               .stream()
-              .filter(song1 -> song1.getId() != song.getId())
+              .filter(song1 -> song1.getId() != media.getId())
               .collect(Collectors.toList()))
       );
-      songRepository.delete(song);
+      mediaRepository.delete(media);
     }
   }
 
   @PutMapping(path = "/editSong")
-  public ResponseEntity<String> editSong(@RequestBody Song alteredSong) {
-    Optional<Song> song = songRepository.findById(alteredSong.getId());
+  public ResponseEntity<String> editSong(@RequestBody Media alteredSong) {
+    Optional<Media> song = mediaRepository.findById(alteredSong.getId());
     if (song.isPresent()) {
-      Song originalSong = song.get();
+      Media originalSong = song.get();
       originalSong.setTitle(alteredSong.getTitle());
       originalSong.setArtist(alteredSong.getArtist());
       originalSong.setAlbum(alteredSong.getAlbum());
@@ -458,7 +479,7 @@ public class SongResource {
       System.out.println(originalSong.getTitle());
       System.out.println(originalSong.getArtist());
       System.out.println(originalSong.getGenres());
-      songRepository.save(originalSong);
+      mediaRepository.save(originalSong);
     } else {
       return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }

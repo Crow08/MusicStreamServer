@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.queue;
 
 import de.crow08.musicstreamserver.playlists.Playlist;
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,20 +11,20 @@ public class Queue {
 
   private UUID id;
 
-  private Song currentSong;
+  private Media currentMedia;
 
-  private List<Song> queuedSongs;
+  private List<Media> queuedMedia;
 
-  private List<Song> historySongs;
+  private List<Media> historyMedia;
 
   public Queue() {
-    queuedSongs = new ArrayList<>();
-    historySongs = new ArrayList<>();
+    queuedMedia = new ArrayList<>();
+    historyMedia = new ArrayList<>();
   }
 
   public Queue(Playlist playlist) {
-    queuedSongs = playlist.getSongs();
-    historySongs = new ArrayList<>();
+    queuedMedia = playlist.getSongs();
+    historyMedia = new ArrayList<>();
   }
 
   public UUID getId() {
@@ -35,27 +35,27 @@ public class Queue {
     this.id = id;
   }
 
-  public Song getCurrentSong() {
-    return currentSong;
+  public Media getCurrentSong() {
+    return currentMedia;
   }
 
-  public void setCurrentSong(Song currentSong) {
-    this.currentSong = currentSong;
+  public void setCurrentSong(Media currentMedia) {
+    this.currentMedia = currentMedia;
   }
 
-  public List<Song> getQueuedSongs() {
-    return queuedSongs;
+  public List<Media> getQueuedSongs() {
+    return queuedMedia;
   }
 
-  public void setQueuedSongs(List<Song> queuedSongs) {
-    this.queuedSongs = queuedSongs;
+  public void setQueuedSongs(List<Media> queuedMedia) {
+    this.queuedMedia = queuedMedia;
   }
 
-  public List<Song> getHistorySongs() {
-    return historySongs;
+  public List<Media> getHistorySongs() {
+    return historyMedia;
   }
 
-  public void setHistorySongs(List<Song> historySongs) {
-    this.historySongs = historySongs;
+  public void setHistorySongs(List<Media> historyMedia) {
+    this.historyMedia = historyMedia;
   }
 }

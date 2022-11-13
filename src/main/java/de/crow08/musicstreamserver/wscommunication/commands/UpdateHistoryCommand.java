@@ -1,27 +1,27 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
-import de.crow08.musicstreamserver.song.MinimalSong;
+import de.crow08.musicstreamserver.media.MinimalMedia;
 
 import java.util.List;
 
 public class UpdateHistoryCommand extends UpdateCommand {
 
-  List<MinimalSong> history;
+  List<MinimalMedia> history;
 
   public UpdateHistoryCommand() {
     super("History");
   }
 
-  public UpdateHistoryCommand(List<MinimalSong> history) {
+  public UpdateHistoryCommand(List<MinimalMedia> history) {
     super("History");
     this.history = history;
   }
 
-  public List<MinimalSong> getHistory() {
+  public List<MinimalMedia> getHistory() {
     return history;
   }
 
-  public void setHistory(List<MinimalSong> history) {
+  public void setHistory(List<MinimalMedia> history) {
     this.history = history;
   }
 }

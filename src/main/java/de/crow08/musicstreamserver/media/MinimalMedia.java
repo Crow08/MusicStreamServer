@@ -1,13 +1,13 @@
-package de.crow08.musicstreamserver.song;
+package de.crow08.musicstreamserver.media;
 
-public class MinimalSong {
+public class MinimalMedia {
   long id;
   String title;
 
-  public MinimalSong() {
+  public MinimalMedia() {
   }
 
-  public MinimalSong(long id, String title) {
+  public MinimalMedia(long id, String title) {
     this.id = id;
     this.title = title;
   }

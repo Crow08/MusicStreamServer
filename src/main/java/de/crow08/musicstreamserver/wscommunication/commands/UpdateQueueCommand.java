@@ -1,27 +1,27 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
-import de.crow08.musicstreamserver.song.MinimalSong;
+import de.crow08.musicstreamserver.media.MinimalMedia;
 
 import java.util.List;
 
 public class UpdateQueueCommand extends UpdateCommand {
 
-  List<MinimalSong> queue;
+  List<MinimalMedia> queue;
 
   public UpdateQueueCommand() {
     super("Queue");
   }
 
-  public UpdateQueueCommand(List<MinimalSong> queue) {
+  public UpdateQueueCommand(List<MinimalMedia> queue) {
     super("Queue");
     this.queue = queue;
   }
 
-  public List<MinimalSong> getQueue() {
+  public List<MinimalMedia> getQueue() {
     return queue;
   }
 
-  public void setQueue(List<MinimalSong> queue) {
+  public void setQueue(List<MinimalMedia> queue) {
     this.queue = queue;
   }
 }

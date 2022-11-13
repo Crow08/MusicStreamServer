@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.playlists;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
 import de.crow08.musicstreamserver.users.User;
 
 import javax.persistence.Column;
@@ -33,7 +33,7 @@ public class Playlist {
   @JoinTable(name = "song_playlist",
       joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"),
       inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"))
-  private List<Song> songs;
+  private List<Media> media;
 
   public Playlist() {
   }
@@ -68,12 +68,12 @@ public class Playlist {
   }
 
   @JsonIgnore
-  public List<Song> getSongs() {
-    return songs;
+  public List<Media> getSongs() {
+    return media;
   }
 
   @JsonIgnore
-  public void setSongs(List<Song> songs) {
-    this.songs = songs;
+  public void setSongs(List<Media> songs) {
+    this.media = songs;
   }
 }

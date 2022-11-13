@@ -1,6 +1,6 @@
 package de.crow08.musicstreamserver.rating;
 
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
 import de.crow08.musicstreamserver.users.User;
 
 import javax.persistence.CascadeType;
@@ -17,14 +17,14 @@ public class RatingId implements Serializable {
 
   @ManyToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "song_id", insertable = false, updatable = false)
-  private Song song;
+  private Media media;
 
   public RatingId() {
   }
 
-  public RatingId(User user, Song song) {
+  public RatingId(User user, Media media) {
     this.user = user;
-    this.song = song;
+    this.media = media;
   }
 
   public User getUser() {
@@ -35,18 +35,18 @@ public class RatingId implements Serializable {
     this.user = user;
   }
 
-  public Song getSong() {
-    return song;
+  public Media getSong() {
+    return media;
   }
 
-  public void setSong(Song song) {
-    this.song = song;
+  public void setSong(Media media) {
+    this.media = media;
   }
 
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof RatingId ratingId) {
-      return ratingId.user.getId() == this.user.getId() && ratingId.song.getId() == song.getId();
+      return ratingId.user.getId() == this.user.getId() && ratingId.media.getId() == media.getId();
     }
     return false;
   }

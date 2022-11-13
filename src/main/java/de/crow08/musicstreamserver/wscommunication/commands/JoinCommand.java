@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
 import de.crow08.musicstreamserver.sessions.Session;
-import de.crow08.musicstreamserver.song.MinimalSong;
+import de.crow08.musicstreamserver.media.MinimalMedia;
 import de.crow08.musicstreamserver.users.User;
 
 import java.util.List;
@@ -9,9 +9,9 @@ import java.util.List;
 public class JoinCommand extends Command {
 
   long userId;
-  MinimalSong currentSong;
-  List<MinimalSong> queue;
-  List<MinimalSong> history;
+  MinimalMedia currentSong;
+  List<MinimalMedia> queue;
+  List<MinimalMedia> history;
   List<User> sessionUsers;
   Session.SessionState sessionState;
   boolean loopMode;
@@ -24,7 +24,7 @@ public class JoinCommand extends Command {
     super("Join");
   }
 
-  public JoinCommand(long userId, MinimalSong currentSong, List<MinimalSong> queue, List<MinimalSong> history,
+  public JoinCommand(long userId, MinimalMedia currentSong, List<MinimalMedia> queue, List<MinimalMedia> history,
                      Session.SessionState sessionState, boolean loopMode, long time, long startOffset, boolean isVideo, List<User> sessionUsers) {
     super("Join");
     this.userId = userId;
@@ -47,27 +47,27 @@ public class JoinCommand extends Command {
     this.userId = userId;
   }
 
-  public MinimalSong getCurrentSong() {
+  public MinimalMedia getCurrentSong() {
     return currentSong;
   }
 
-  public void setCurrentSong(MinimalSong currentSong) {
+  public void setCurrentSong(MinimalMedia currentSong) {
     this.currentSong = currentSong;
   }
 
-  public List<MinimalSong> getQueue() {
+  public List<MinimalMedia> getQueue() {
     return queue;
   }
 
-  public void setQueue(List<MinimalSong> queue) {
+  public void setQueue(List<MinimalMedia> queue) {
     this.queue = queue;
   }
 
-  public List<MinimalSong> getHistory() {
+  public List<MinimalMedia> getHistory() {
     return history;
   }
 
-  public void setHistory(List<MinimalSong> history) {
+  public void setHistory(List<MinimalMedia> history) {
     this.history = history;
   }
 

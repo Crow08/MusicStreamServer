@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.sessions;
 
 import de.crow08.musicstreamserver.queue.Queue;
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
 import de.crow08.musicstreamserver.users.User;
 import de.crow08.musicstreamserver.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.WebSocketSessionController;
@@ -82,7 +82,7 @@ public class SessionController {
    * @param session to get the song for.
    * @return the current song.
    */
-  public Optional<Song> getCurrentSong(Session session) {
+  public Optional<Media> getCurrentSong(Session session) {
     if (session.getQueue().getCurrentSong() == null) {
       this.nextSong(session);
     }
@@ -115,10 +115,10 @@ public class SessionController {
    */
   public void nextSong(Session session) {
     Queue queue = session.getQueue();
-    Song currentSong = queue.getCurrentSong();
+    Media currentMedia = queue.getCurrentSong();
     // Add current song to history
-    if (currentSong != null) {
-      queue.getHistorySongs().add(currentSong);
+    if (currentMedia != null) {
+      queue.getHistorySongs().add(currentMedia);
     }
     // If queue is empty and loopMode is active, dump history into queue.
     if (queue.getQueuedSongs().size() == 0 && session.isLoopMode() && !queue.getHistorySongs().isEmpty()) {
@@ -142,9 +142,9 @@ public class SessionController {
    */
   public void previousSong(Session session) {
     Queue queue = session.getQueue();
-    Song currentSong = queue.getCurrentSong();
-    if (currentSong != null) {
-      queue.getQueuedSongs().add(0, currentSong);
+    Media currentMedia = queue.getCurrentSong();
+    if (currentMedia != null) {
+      queue.getQueuedSongs().add(0, currentMedia);
     }
     // if history is empty and loop mode is active use the last song int the queue instead.
     if (queue.getHistorySongs().size() == 0 && session.isLoopMode() && !queue.getQueuedSongs().isEmpty()) {
@@ -163,11 +163,11 @@ public class SessionController {
    * Adds a list of songs to the end of the queue of the session
    *
    * @param session for the songs to be added to
-   * @param songs   list of new songs
+   * @param media   list of new songs
    */
 
-  public void addSongs(Session session, List<Song> songs) {
-    session.getQueue().getQueuedSongs().addAll(songs);
+  public void addSongs(Session session, List<Media> media) {
+    session.getQueue().getQueuedSongs().addAll(media);
   }
 
   /**

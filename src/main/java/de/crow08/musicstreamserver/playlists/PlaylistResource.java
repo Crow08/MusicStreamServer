@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.playlists;
 
 import de.crow08.musicstreamserver.authentication.AuthenticatedUser;
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
 import de.crow08.musicstreamserver.users.User;
 import de.crow08.musicstreamserver.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,8 +53,8 @@ public class PlaylistResource {
     if (playlist.get().getSongs().stream().anyMatch(song -> song.getId() == songId)) {
       return new ResponseEntity<>(HttpStatus.CONFLICT);
     }
-    Song song = new Song(songId);
-    playlist.get().getSongs().add(song);
+    Media media = new Media(songId);
+    playlist.get().getSongs().add(media);
     playlistRepository.save(playlist.get());
     return new ResponseEntity<>(HttpStatus.OK);
   }
@@ -66,10 +66,10 @@ public class PlaylistResource {
     if (playlist.isEmpty()) {
       return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
-    ArrayList<Song> songsToAdd = new ArrayList<>();
+    ArrayList<Media> songsToAdd = new ArrayList<>();
     for (Long song_id : song_ids) {
       if (playlist.get().getSongs().stream().noneMatch(plSong -> song_id == plSong.getId())) {
-        songsToAdd.add(new Song(song_id));
+        songsToAdd.add(new Media(song_id));
       }
     }
     if (songsToAdd.isEmpty()) {

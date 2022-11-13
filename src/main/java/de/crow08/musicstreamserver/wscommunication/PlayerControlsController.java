@@ -6,8 +6,8 @@ import de.crow08.musicstreamserver.queue.Queue;
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
-import de.crow08.musicstreamserver.song.MinimalSong;
-import de.crow08.musicstreamserver.song.Song;
+import de.crow08.musicstreamserver.media.Media;
+import de.crow08.musicstreamserver.media.MinimalMedia;
 import de.crow08.musicstreamserver.users.User;
 import de.crow08.musicstreamserver.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
@@ -109,10 +109,10 @@ public class PlayerControlsController {
   public Command join(@DestinationVariable long sessionId, @DestinationVariable long userId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    Optional<Song> currentSong = sessionController.getCurrentSong(session);
-    MinimalSong minSong = null;
+    Optional<Media> currentSong = sessionController.getCurrentSong(session);
+    MinimalMedia minSong = null;
     if (currentSong.isPresent()) {
-      minSong = new MinimalSong(currentSong.get().getId(), currentSong.get().getTitle());
+      minSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle());
     }
     long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
     long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
@@ -163,17 +163,17 @@ public class PlayerControlsController {
         Collections.swap(queue.getHistorySongs(), previousIndex, currentIndex);
       } else {
         // dragged into queue
-        Song song = queue.getHistorySongs().remove(previousIndex);
+        Media media = queue.getHistorySongs().remove(previousIndex);
         int queuePos = Math.max(currentIndex - (queue.getHistorySongs().size() + 1), 0);
-        queue.getQueuedSongs().add(queuePos, song);
+        queue.getQueuedSongs().add(queuePos, media);
       }
     } else if (queue.getHistorySongs().size() < previousIndex) {
       // Dragged element is from queue
       if (queue.getHistorySongs().size() >= currentIndex) {
         // Dragged into history
         int queuePos = Math.max(previousIndex - (queue.getHistorySongs().size() + 1), 0);
-        Song song = queue.getQueuedSongs().get(queuePos);
-        queue.getHistorySongs().add(currentIndex, song);
+        Media media = queue.getQueuedSongs().get(queuePos);
+        queue.getHistorySongs().add(currentIndex, media);
         queue.getQueuedSongs().remove(queuePos);
       } else {
         // Dragged into queue
@@ -228,7 +228,7 @@ public class PlayerControlsController {
   }
 
   private Command startSong(Session session) {
-    Optional<Song> currentSong = sessionController.getCurrentSong(session);
+    Optional<Media> currentSong = sessionController.getCurrentSong(session);
     if (currentSong.isPresent()) {
       long songId = currentSong.get().getId();
       long startTime = sessionController.start(session).toEpochMilli();
@@ -244,8 +244,8 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
-    Song song = mapper.readValue(message, Song.class);
-    session.getQueue().getQueuedSongs().add(song);
+    Media media = mapper.readValue(message, Media.class);
+    session.getQueue().getQueuedSongs().add(media);
     return new UpdateQueueCommand();
   }
 
@@ -255,9 +255,9 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
-    List<Song> songs = mapper.readValue(message, new TypeReference<>() {
+    List<Media> media = mapper.readValue(message, new TypeReference<>() {
     });
-    session.getQueue().getQueuedSongs().addAll(songs);
+    session.getQueue().getQueuedSongs().addAll(media);
     return new UpdateQueueCommand();
   }
 
@@ -267,20 +267,20 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
-    Song song = mapper.readValue(message, Song.class);
-    session.getQueue().getQueuedSongs().add(0, song);
+    Media media = mapper.readValue(message, Media.class);
+    session.getQueue().getQueuedSongs().add(0, media);
     return new UpdateQueueCommand();
   }
 
-  private List<MinimalSong> getSongsFromQueue(Session session) {
+  private List<MinimalMedia> getSongsFromQueue(Session session) {
     return session.getQueue().getQueuedSongs().stream()
-        .map(song -> new MinimalSong(song.getId(), song.getTitle()))
+        .map(song -> new MinimalMedia(song.getId(), song.getTitle()))
         .collect(Collectors.toList());
   }
 
-  private List<MinimalSong> getSongsFromHistory(Session session) {
+  private List<MinimalMedia> getSongsFromHistory(Session session) {
     return session.getQueue().getHistorySongs().stream()
-        .map(song -> new MinimalSong(song.getId(), song.getTitle()))
+        .map(song -> new MinimalMedia(song.getId(), song.getTitle()))
         .collect(Collectors.toList());
   }
 }
