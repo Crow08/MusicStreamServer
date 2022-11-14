@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.sessions;
 
-import de.crow08.musicstreamserver.playlists.Playlist;
-import de.crow08.musicstreamserver.playlists.PlaylistRepository;
+import de.crow08.musicstreamserver.model.playlists.Playlist;
+import de.crow08.musicstreamserver.model.playlists.PlaylistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

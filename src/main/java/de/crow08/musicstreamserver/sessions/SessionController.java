@@ -1,9 +1,9 @@
 package de.crow08.musicstreamserver.sessions;
 
-import de.crow08.musicstreamserver.queue.Queue;
-import de.crow08.musicstreamserver.media.Media;
-import de.crow08.musicstreamserver.users.User;
-import de.crow08.musicstreamserver.users.UserRepository;
+import de.crow08.musicstreamserver.model.queue.Queue;
+import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.users.User;
+import de.crow08.musicstreamserver.model.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.WebSocketSessionController;
 import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
 import org.springframework.beans.factory.annotation.Autowired;

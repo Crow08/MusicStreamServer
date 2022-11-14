@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.wscommunication;
 
-import de.crow08.musicstreamserver.users.User;
-import de.crow08.musicstreamserver.users.UserRepository;
+import de.crow08.musicstreamserver.model.users.User;
+import de.crow08.musicstreamserver.model.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;

@@ -1,6 +1,6 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
-import de.crow08.musicstreamserver.media.MinimalMedia;
+import de.crow08.musicstreamserver.model.media.MinimalMedia;
 
 import java.util.List;
 

@@ -22,18 +22,33 @@ VALUES (1, 'spotify'),
        (2, 'Bad Quality'),
        (3, 'Wrong Version');
 
-INSERT INTO `media` (`id`, `title`, `uri`, `artist_id`, `album_id`)
-values (1, 'test_song_mp3', '/media/1.mp3', 1, 1),
-       (2, 'test_song_wav', '/media/1.wav', 1, 1),
-       (3, 'Back In Time', '/media/K-391 - Back In Time.mp3', 2, 2),
-       (4, 'Buoyancy', '/media/K-391 - Buoyancy.mp3', 2, 2),
-       (5, 'Earth', '/media/K-391 - Earth.mp3', 2, 2),
-       (6, 'Universe', '/media/K-391 - Universe.mp3', 2, 2),
-       (7, 'video_Folge_1', '/media/v1.mp4', 3, 3),
-       (8, 'video_Folge_2', '/media/v2.mp4', 3, 3),
-       (9, 'video_Folge_3', '/media/v3.mp4', 3, 3),
-       (10, 'video_Folge_4', '/media/v4.mp4', 3, 3),
-       (11, 'video_Folge_5', '/media/v5.mkv', 3, 3);
+INSERT INTO `media` (`id`, `title`, `uri`, `type`)
+values (1, 'test_song_mp3', '/songs/1.mp3', 'SONG'),
+       (2, 'test_song_wav', '/songs/1.wav', 'SONG'),
+       (3, 'Back In Time', '/songs/K-391 - Back In Time.mp3', 'SONG'),
+       (4, 'Buoyancy', '/songs/K-391 - Buoyancy.mp3', 'SONG'),
+       (5, 'Earth', '/songs/K-391 - Earth.mp3', 'SONG'),
+       (6, 'Universe', '/songs/K-391 - Universe.mp3', 'SONG'),
+       (7, 'video_Folge_1', '/videos/v1.mp4', 'VIDEO'),
+       (8, 'video_Folge_2', '/videos/v2.mp4', 'VIDEO'),
+       (9, 'video_Folge_3', '/videos/v3.mp4', 'VIDEO'),
+       (10, 'video_Folge_4', '/videos/v4.mp4', 'VIDEO'),
+       (11, 'video_Folge_5', '/videos/v5.mkv', 'VIDEO'),
+       (12, 'video_Folge_1.1', '/videos/dash/v1_dashinit.mp4', 'VIDEO');
+
+INSERT INTO `song` (`id`, `artist_id`, `album_id`, `spotify`)
+values (1, 1, 1, FALSE),
+       (2, 1, 1, FALSE),
+       (3, 2, 2, FALSE),
+       (4, 2, 2, FALSE),
+       (5, 2, 2, FALSE),
+       (6, 2, 2, FALSE),
+       (7, 3, 3, FALSE),
+       (8, 3, 3, FALSE),
+       (9, 3, 3, FALSE),
+       (10, 3, 3, FALSE),
+       (11, 3, 3, FALSE),
+       (12, 3, 3, FALSE);
 
 INSERT INTO `playlist` (`id`, `author_id`, `name`)
 VALUES (1, null, 'no playlist'),
@@ -52,7 +67,8 @@ VALUES (2, 1),
        (4, 8),
        (4, 9),
        (4, 10),
-       (4, 11);
+       (4, 11),
+       (4, 12);
 
 INSERT INTO `song_genre` (`genre_id`, `song_id`)
 VALUES (1, 3),

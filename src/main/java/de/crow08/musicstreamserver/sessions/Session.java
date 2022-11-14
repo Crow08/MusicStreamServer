@@ -1,8 +1,8 @@
 package de.crow08.musicstreamserver.sessions;
 
-import de.crow08.musicstreamserver.playlists.Playlist;
-import de.crow08.musicstreamserver.queue.Queue;
-import de.crow08.musicstreamserver.users.User;
+import de.crow08.musicstreamserver.model.playlists.Playlist;
+import de.crow08.musicstreamserver.model.queue.Queue;
+import de.crow08.musicstreamserver.model.users.User;
 
 import java.time.Duration;
 import java.time.Instant;

@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.authentication;
 
-import de.crow08.musicstreamserver.users.User;
-import de.crow08.musicstreamserver.users.UserRepository;
+import de.crow08.musicstreamserver.model.users.User;
+import de.crow08.musicstreamserver.model.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

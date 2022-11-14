@@ -2,14 +2,15 @@ package de.crow08.musicstreamserver.wscommunication;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.crow08.musicstreamserver.queue.Queue;
+import de.crow08.musicstreamserver.model.media.MediaType;
+import de.crow08.musicstreamserver.model.queue.Queue;
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
-import de.crow08.musicstreamserver.media.Media;
-import de.crow08.musicstreamserver.media.MinimalMedia;
-import de.crow08.musicstreamserver.users.User;
-import de.crow08.musicstreamserver.users.UserRepository;
+import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.media.MinimalMedia;
+import de.crow08.musicstreamserver.model.users.User;
+import de.crow08.musicstreamserver.model.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
@@ -111,15 +112,16 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Optional<Media> currentSong = sessionController.getCurrentSong(session);
     MinimalMedia minSong = null;
+    boolean isVideo = false;
     if (currentSong.isPresent()) {
       minSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle());
+      isVideo = currentSong.get().getType() == MediaType.VIDEO;
     }
     long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
     long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
     Optional<User> connectedUser = this.userRepository.findById(userId);
     if (connectedUser.isPresent()) {
       sessionController.addUserToSession(connectedUser.get(), session);
-      boolean isVideo = minSong != null && minSong.getTitle() != null && minSong.getTitle().startsWith("video_"); //TODO: introduce media type.
       return new JoinCommand(userId, minSong, getSongsFromQueue(session), getSongsFromHistory(session),
           session.getSessionState(), session.isLoopMode(), startTime, startOffset, isVideo,session.getUsers());
     }
@@ -232,7 +234,7 @@ public class PlayerControlsController {
     if (currentSong.isPresent()) {
       long songId = currentSong.get().getId();
       long startTime = sessionController.start(session).toEpochMilli();
-      boolean isVideo = currentSong.get().getTitle() != null && currentSong.get().getTitle().startsWith("video_"); //TODO: introduce media type.
+      boolean isVideo = currentSong.get().getType() == MediaType.VIDEO;
       return new StartCommand(songId, startTime, isVideo);
     }
     return new StopCommand();
