@@ -3,7 +3,6 @@ package de.crow08.musicstreamserver.wscommunication.commands;
 public class StartCommand extends Command {
   long songId;
   long time;
-
   boolean isVideo;
 
   public StartCommand(long songId, long time, boolean isVideo) {

@@ -13,6 +13,7 @@ import de.crow08.musicstreamserver.model.users.User;
 import de.crow08.musicstreamserver.model.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
+import de.crow08.musicstreamserver.wscommunication.commands.JumpCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.NopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.PauseCommand;
@@ -58,6 +59,18 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     return startSong(session);
+  }
+
+  @MessageMapping("/sessions/{sessionId}/commands/jump/{offset}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command jump(@DestinationVariable long sessionId, @DestinationVariable long offset, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    sessionController.setSongStartOffset(session, offset);
+    long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
+    long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
+
+    return new JumpCommand(startTime, startOffset);
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/skip")

@@ -107,6 +107,16 @@ public class SessionController {
     return duration;
   }
 
+  public Duration setSongStartOffset(Session session, long offset) {
+    Duration duration = Duration.ZERO;
+    if (session.getSongStarted() != null) {
+      session.setSongStarted(session.getSongStarted().minus(offset, ChronoUnit.MILLIS));
+    } else {
+      session.setSavedProgression(session.getSavedProgression().plus(offset, ChronoUnit.MILLIS));
+    }
+    return duration;
+  }
+
   /**
    * This is a macro function which tries to move the next song in the queue to the current song while
    * adding the old current song to the history.
