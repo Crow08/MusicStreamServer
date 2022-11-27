@@ -125,18 +125,16 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Optional<Media> currentSong = sessionController.getCurrentSong(session);
     MinimalMedia minSong = null;
-    boolean isVideo = false;
     if (currentSong.isPresent()) {
-      minSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle());
-      isVideo = currentSong.get().getType() == MediaType.VIDEO;
+      minSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle(), currentSong.get().getType());
     }
     long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
     long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
     Optional<User> connectedUser = this.userRepository.findById(userId);
     if (connectedUser.isPresent()) {
       sessionController.addUserToSession(connectedUser.get(), session);
-      return new JoinCommand(userId, minSong, getSongsFromQueue(session), getSongsFromHistory(session),
-          session.getSessionState(), session.isLoopMode(), startTime, startOffset, isVideo,session.getUsers());
+      return new JoinCommand(userId, minSong, getMediaFromQueue(session), getMediaFromHistory(session),
+          session.getSessionState(), session.isLoopMode(), startTime, startOffset,session.getUsers());
     }
     return new NopCommand();
   }
@@ -160,7 +158,7 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     sessionController.shuffleQueue(session);
-    return new UpdateQueueCommand(getSongsFromQueue(session));
+    return new UpdateQueueCommand(getMediaFromQueue(session));
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/movedSong/{previousIndex}/to/{currentIndex}")
@@ -171,32 +169,32 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Queue queue = session.getQueue();
 
-    if (queue.getHistorySongs().size() > previousIndex) {
+    if (queue.getHistoryMedia().size() > previousIndex) {
       // Dragged Element is from history
-      if (queue.getHistorySongs().size() > currentIndex) {
+      if (queue.getHistoryMedia().size() > currentIndex) {
         // Dragged into history
-        Collections.swap(queue.getHistorySongs(), previousIndex, currentIndex);
+        Collections.swap(queue.getHistoryMedia(), previousIndex, currentIndex);
       } else {
         // dragged into queue
-        Media media = queue.getHistorySongs().remove(previousIndex);
-        int queuePos = Math.max(currentIndex - (queue.getHistorySongs().size() + 1), 0);
-        queue.getQueuedSongs().add(queuePos, media);
+        Media media = queue.getHistoryMedia().remove(previousIndex);
+        int queuePos = Math.max(currentIndex - (queue.getHistoryMedia().size() + 1), 0);
+        queue.getQueuedMedia().add(queuePos, media);
       }
-    } else if (queue.getHistorySongs().size() < previousIndex) {
+    } else if (queue.getHistoryMedia().size() < previousIndex) {
       // Dragged element is from queue
-      if (queue.getHistorySongs().size() >= currentIndex) {
+      if (queue.getHistoryMedia().size() >= currentIndex) {
         // Dragged into history
-        int queuePos = Math.max(previousIndex - (queue.getHistorySongs().size() + 1), 0);
-        Media media = queue.getQueuedSongs().get(queuePos);
-        queue.getHistorySongs().add(currentIndex, media);
-        queue.getQueuedSongs().remove(queuePos);
+        int queuePos = Math.max(previousIndex - (queue.getHistoryMedia().size() + 1), 0);
+        Media media = queue.getQueuedMedia().get(queuePos);
+        queue.getHistoryMedia().add(currentIndex, media);
+        queue.getQueuedMedia().remove(queuePos);
       } else {
         // Dragged into queue
-        Collections.swap(queue.getQueuedSongs(), previousIndex - (queue.getHistorySongs().size() + 1), currentIndex - (queue.getHistorySongs().size() + 1));
+        Collections.swap(queue.getQueuedMedia(), previousIndex - (queue.getHistoryMedia().size() + 1), currentIndex - (queue.getHistoryMedia().size() + 1));
       }
     }
 
-    return new UpdateQueueAndHistoryCommand(getSongsFromQueue(session), getSongsFromHistory(session));
+    return new UpdateQueueAndHistoryCommand(getMediaFromQueue(session), getMediaFromHistory(session));
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/loop/{loopMode}")
@@ -231,12 +229,12 @@ public class PlayerControlsController {
       case "queue" -> {
         sessionController.deleteSongFromQueue(session, queueIndex);
         System.out.println("removed from queue");
-        return new UpdateQueueCommand(getSongsFromQueue(session));
+        return new UpdateQueueCommand(getMediaFromQueue(session));
       }
       case "history" -> {
         sessionController.deleteSongFromHistory(session, queueIndex);
         System.out.println("removed from history");
-        return new UpdateHistoryCommand(getSongsFromHistory(session));
+        return new UpdateHistoryCommand(getMediaFromHistory(session));
       }
     }
     return new NopCommand();
@@ -245,10 +243,9 @@ public class PlayerControlsController {
   private Command startSong(Session session) {
     Optional<Media> currentSong = sessionController.getCurrentSong(session);
     if (currentSong.isPresent()) {
-      long songId = currentSong.get().getId();
+      MinimalMedia minimalSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle(),currentSong.get().getType());
       long startTime = sessionController.start(session).toEpochMilli();
-      boolean isVideo = currentSong.get().getType() == MediaType.VIDEO;
-      return new StartCommand(songId, startTime, isVideo);
+      return new StartCommand(minimalSong, startTime);
     }
     return new StopCommand();
   }
@@ -260,7 +257,7 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
     Media media = mapper.readValue(message, Media.class);
-    session.getQueue().getQueuedSongs().add(media);
+    session.getQueue().getQueuedMedia().add(media);
     return new UpdateQueueCommand();
   }
 
@@ -272,7 +269,7 @@ public class PlayerControlsController {
     ObjectMapper mapper = new ObjectMapper();
     List<Media> media = mapper.readValue(message, new TypeReference<>() {
     });
-    session.getQueue().getQueuedSongs().addAll(media);
+    session.getQueue().getQueuedMedia().addAll(media);
     return new UpdateQueueCommand();
   }
 
@@ -283,19 +280,19 @@ public class PlayerControlsController {
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
     Media media = mapper.readValue(message, Media.class);
-    session.getQueue().getQueuedSongs().add(0, media);
+    session.getQueue().getQueuedMedia().add(0, media);
     return new UpdateQueueCommand();
   }
 
-  private List<MinimalMedia> getSongsFromQueue(Session session) {
-    return session.getQueue().getQueuedSongs().stream()
-        .map(song -> new MinimalMedia(song.getId(), song.getTitle()))
+  private List<MinimalMedia> getMediaFromQueue(Session session) {
+    return session.getQueue().getQueuedMedia().stream()
+        .map(media -> new MinimalMedia(media.getId(), media.getTitle(), media.getType()))
         .collect(Collectors.toList());
   }
 
-  private List<MinimalMedia> getSongsFromHistory(Session session) {
-    return session.getQueue().getHistorySongs().stream()
-        .map(song -> new MinimalMedia(song.getId(), song.getTitle()))
+  private List<MinimalMedia> getMediaFromHistory(Session session) {
+    return session.getQueue().getHistoryMedia().stream()
+        .map(media -> new MinimalMedia(media.getId(), media.getTitle(), media.getType()))
         .collect(Collectors.toList());
   }
 }

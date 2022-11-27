@@ -1,42 +1,34 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
-public class StartCommand extends Command {
-  long songId;
-  long time;
-  boolean isVideo;
+import de.crow08.musicstreamserver.model.media.MinimalMedia;
 
-  public StartCommand(long songId, long time, boolean isVideo) {
+public class StartCommand extends Command {
+  MinimalMedia currentMedia;
+  long startServerTime;
+
+  public StartCommand(MinimalMedia currentMedia, long startServerTime) {
     super("Start");
-    this.songId = songId;
-    this.time = time;
-    this.isVideo = isVideo;
+    this.currentMedia = currentMedia;
+    this.startServerTime = startServerTime;
   }
 
   public StartCommand() {
     super("Start");
   }
 
-  public long getSongId() {
-    return songId;
+  public MinimalMedia getCurrentMedia() {
+    return currentMedia;
   }
 
-  public void setSongId(long songId) {
-    this.songId = songId;
+  public void setCurrentMedia(MinimalMedia currentMedia) {
+    this.currentMedia = currentMedia;
   }
 
-  public long getTime() {
-    return time;
+  public long getStartServerTime() {
+    return startServerTime;
   }
 
-  public void setTime(long time) {
-    this.time = time;
-  }
-
-  public boolean getIsVideo() {
-    return isVideo;
-  }
-
-  public void setIsVideo(boolean isVideo) {
-    this.isVideo = isVideo;
+  public void setStartServerTime(long startServerTime) {
+    this.startServerTime = startServerTime;
   }
 }

@@ -28,4 +28,20 @@ public class Video extends Media {
   public Video(String title, String uri) {
     super(title, uri);
   }
+
+  public Series getSeries() {
+    return series;
+  }
+
+  public void setSeries(Series series) {
+    this.series = series;
+  }
+
+  public Season getSeason() {
+    return season;
+  }
+
+  public void setSeason(Season season) {
+    this.season = season;
+  }
 }

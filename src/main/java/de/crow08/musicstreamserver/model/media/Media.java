@@ -1,6 +1,7 @@
 package de.crow08.musicstreamserver.model.media;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import de.crow08.musicstreamserver.model.playlists.Playlist;
 import de.crow08.musicstreamserver.model.tag.Tag;
 

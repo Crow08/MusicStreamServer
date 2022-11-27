@@ -5,13 +5,19 @@ values (1, 'admin', '{bcrypt}$2a$10$rLF5EuZIU6GK.EaT9R.JDO0Hg/UDS1aorA8WRKxpeA7x
 
 INSERT INTO `artist` (`id`, `name`)
 values (1, 'Unknown Artist'),
-       (2, 'K-391'),
-       (3, 'Bleach');
+       (2, 'K-391');
+
+INSERT INTO `series` (`id`, `name`)
+values (1, 'Unknown Series'),
+       (2, 'Bleach');
 
 INSERT INTO `album` (`id`, `name`)
 values (1, 'Unknown Album'),
-       (2, 'Back In Time'),
-       (3, 'Thousand-Year Blood War');
+       (2, 'Back In Time');
+
+INSERT INTO `season` (`id`, `name`)
+values (1, 'Unknown Season'),
+       (2, 'Thousand-Year Blood War');
 
 INSERT INTO `genre` (`id`, `name`)
 VALUES (1, 'Electronic'),
@@ -33,8 +39,8 @@ values (1, 'test_song_mp3', '/songs/1.mp3', 'SONG'),
        (8, 'video_Folge_2', '/videos/v2.mp4', 'VIDEO'),
        (9, 'video_Folge_3', '/videos/v3.mp4', 'VIDEO'),
        (10, 'video_Folge_4', '/videos/v4.mp4', 'VIDEO'),
-       (11, 'video_Folge_5', '/videos/v5.mkv', 'VIDEO'),
-       (12, 'video_Folge_1.1', '/videos/dash/v1_dashinit.mp4', 'VIDEO');
+       (11, 'video_Folge_5', '/videos/v5.mp4', 'VIDEO'),
+       (12, 'video_Folge_6', '/videos/v6.mp4', 'VIDEO');
 
 INSERT INTO `song` (`id`, `artist_id`, `album_id`, `spotify`)
 values (1, 1, 1, FALSE),
@@ -42,13 +48,15 @@ values (1, 1, 1, FALSE),
        (3, 2, 2, FALSE),
        (4, 2, 2, FALSE),
        (5, 2, 2, FALSE),
-       (6, 2, 2, FALSE),
-       (7, 3, 3, FALSE),
-       (8, 3, 3, FALSE),
-       (9, 3, 3, FALSE),
-       (10, 3, 3, FALSE),
-       (11, 3, 3, FALSE),
-       (12, 3, 3, FALSE);
+       (6, 2, 2, FALSE);
+
+INSERT INTO `video` (`id`, `series_id`, `season_id`)
+values (7, 2, 2),
+       (8, 2, 2),
+       (9, 2, 2),
+       (10, 2, 2),
+       (11, 2, 2),
+       (12, 2, 2);
 
 INSERT INTO `playlist` (`id`, `author_id`, `name`)
 VALUES (1, null, 'no playlist'),

@@ -11,6 +11,7 @@ import de.crow08.musicstreamserver.model.genre.Genre;
 import de.crow08.musicstreamserver.model.genre.GenreRepository;
 import de.crow08.musicstreamserver.model.media.song.Song;
 import de.crow08.musicstreamserver.model.media.song.SongRepository;
+import de.crow08.musicstreamserver.model.media.video.Video;
 import de.crow08.musicstreamserver.model.media.video.VideoRepository;
 import de.crow08.musicstreamserver.model.playlists.Playlist;
 import de.crow08.musicstreamserver.model.playlists.PlaylistRepository;
@@ -351,39 +352,20 @@ public class MediaResource {
   }
 
   @GetMapping("/{id}")
-  public @ResponseBody Optional<Media> getSong(@PathVariable Long id) {
+  public @ResponseBody Optional<Media> getMedia(@PathVariable Long id) {
     return mediaRepository.findById(id);
   }
 
-  @GetMapping("/{id}/data/{offset}")
-  @PreSignedUrlEnabled
-  public @ResponseBody ResponseEntity<Resource> getSongData(@PathVariable String id, @PathVariable String offset) throws IOException, UnsupportedAudioFileException, TagException, ReadOnlyFileException, CannotReadException, InvalidAudioFrameException {
-    Optional<Media> song = this.mediaRepository.findById(Long.parseLong(id));
-    long offsetMillis = Long.parseLong(offset);
-    if (song.isPresent()) {
-      if (song.get().getType() == SONG && ((Song)song.get()).isSpotify()) {
-        System.err.println("Error: Tried to access song data for a spotify resource.");
-        return new ResponseEntity<>(HttpStatus.UNPROCESSABLE_ENTITY);
-      }
-      File origFile = new File(storagePath.toAbsolutePath() + song.get().getUri());
-      File outFile;
-      if (song.get().getUri().endsWith(".wav")) {
-        outFile = cutWaveFile(origFile, offsetMillis);
-      } else if (song.get().getUri().endsWith(".mp3")) {
-        outFile = cutMP3File(origFile, offsetMillis);
-      } else {
-        return new ResponseEntity<>(HttpStatus.UNPROCESSABLE_ENTITY);
-      }
-      InputStreamResource stream = new InputStreamResource(new FileInputStream(outFile));
+  @GetMapping("/song/{id}")
+  public @ResponseBody Optional<Song> getSong(@PathVariable Long id) {
+    Optional<Song> byId = songRepository.findById(id);
+    return byId;
+  }
 
-      return ResponseEntity.ok()
-          .contentLength(outFile.length())
-          .contentType(MediaType.valueOf("audio/mpeg"))
-          .header("Accept-Ranges", "bytes")
-          .body(stream);
-    } else {
-      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
+  @GetMapping("/video/{id}")
+  public @ResponseBody Optional<Video> getVideo(@PathVariable Long id) {
+    Optional<Video> byId = videoRepository.findById(id);
+    return byId;
   }
 
   @GetMapping(path = "/getSongsByKeyword/{keyword}")

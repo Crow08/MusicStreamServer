@@ -9,14 +9,14 @@ import java.util.List;
 public class JoinCommand extends Command {
 
   long userId;
-  MinimalMedia currentSong;
+  MinimalMedia currentMedia;
   List<MinimalMedia> queue;
   List<MinimalMedia> history;
   List<User> sessionUsers;
   Session.SessionState sessionState;
   boolean loopMode;
-  long time;
-  long startOffset;
+  long startServerTime;
+  long startMediaTime;
 
   boolean isVideo;
 
@@ -24,19 +24,18 @@ public class JoinCommand extends Command {
     super("Join");
   }
 
-  public JoinCommand(long userId, MinimalMedia currentSong, List<MinimalMedia> queue, List<MinimalMedia> history,
-                     Session.SessionState sessionState, boolean loopMode, long time, long startOffset, boolean isVideo, List<User> sessionUsers) {
+  public JoinCommand(long userId, MinimalMedia currentMedia, List<MinimalMedia> queue, List<MinimalMedia> history,
+                     Session.SessionState sessionState, boolean loopMode, long startServerTime, long startMediaTime, List<User> sessionUsers) {
     super("Join");
     this.userId = userId;
-    this.currentSong = currentSong;
+    this.currentMedia = currentMedia;
     this.queue = queue;
     this.history = history;
     this.sessionState = sessionState;
     this.loopMode = loopMode;
-    this.time = time;
-    this.startOffset = startOffset;
+    this.startServerTime = startServerTime;
+    this.startMediaTime = startMediaTime;
     this.sessionUsers = sessionUsers;
-    this.isVideo = isVideo;
   }
 
   public long getUserId() {
@@ -47,12 +46,12 @@ public class JoinCommand extends Command {
     this.userId = userId;
   }
 
-  public MinimalMedia getCurrentSong() {
-    return currentSong;
+  public MinimalMedia getCurrentMedia() {
+    return currentMedia;
   }
 
-  public void setCurrentSong(MinimalMedia currentSong) {
-    this.currentSong = currentSong;
+  public void setCurrentMedia(MinimalMedia currentMedia) {
+    this.currentMedia = currentMedia;
   }
 
   public List<MinimalMedia> getQueue() {
@@ -87,20 +86,20 @@ public class JoinCommand extends Command {
     this.loopMode = loopMode;
   }
 
-  public long getTime() {
-    return time;
+  public long getStartServerTime() {
+    return startServerTime;
   }
 
-  public void setTime(long time) {
-    this.time = time;
+  public void setStartServerTime(long startServerTime) {
+    this.startServerTime = startServerTime;
   }
 
-  public long getStartOffset() {
-    return startOffset;
+  public long getStartMediaTime() {
+    return startMediaTime;
   }
 
-  public void setStartOffset(long startOffset) {
-    this.startOffset = startOffset;
+  public void setStartMediaTime(long startMediaTime) {
+    this.startMediaTime = startMediaTime;
   }
 
   public boolean getIsVideo() {

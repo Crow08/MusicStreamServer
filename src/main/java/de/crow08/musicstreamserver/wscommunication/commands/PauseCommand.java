@@ -1,22 +1,22 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
 public class PauseCommand extends Command {
-  long position;
+  long mediaStopTime;
 
-  public PauseCommand(long position) {
+  public PauseCommand(long mediaStopTime) {
     super("Pause");
-    this.position = position;
+    this.mediaStopTime = mediaStopTime;
   }
 
   public PauseCommand() {
     super("Pause");
   }
 
-  public long getPosition() {
-    return position;
+  public long getMediaStopTime() {
+    return mediaStopTime;
   }
 
-  public void setPosition(long position) {
-    this.position = position;
+  public void setMediaStopTime(long mediaStopTime) {
+    this.mediaStopTime = mediaStopTime;
   }
 }

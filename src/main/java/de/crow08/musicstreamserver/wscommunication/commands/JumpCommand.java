@@ -1,38 +1,32 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
-import de.crow08.musicstreamserver.model.media.MinimalMedia;
-import de.crow08.musicstreamserver.model.users.User;
-import de.crow08.musicstreamserver.sessions.Session;
-
-import java.util.List;
-
 public class JumpCommand extends Command {
-  long time;
-  long startOffset;
+  long startServerTime;
+  long startMediaTime;
 
   public JumpCommand() {
     super("Jump");
   }
 
-  public JumpCommand(long time, long startOffset) {
+  public JumpCommand(long startServerTime, long startOffset) {
     super("Jump");
-    this.time = time;
-    this.startOffset = startOffset;
+    this.startServerTime = startServerTime;
+    this.startMediaTime = startOffset;
   }
 
-  public long getTime() {
-    return time;
+  public long getStartServerTime() {
+    return startServerTime;
   }
 
-  public void setTime(long time) {
-    this.time = time;
+  public void setStartServerTime(long startServerTime) {
+    this.startServerTime = startServerTime;
   }
 
-  public long getStartOffset() {
-    return startOffset;
+  public long getStartMediaTime() {
+    return startMediaTime;
   }
 
-  public void setStartOffset(long startOffset) {
-    this.startOffset = startOffset;
+  public void setStartMediaTime(long startMediaTime) {
+    this.startMediaTime = startMediaTime;
   }
 }

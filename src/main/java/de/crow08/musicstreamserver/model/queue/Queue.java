@@ -43,7 +43,7 @@ public class Queue {
     this.currentMedia = currentMedia;
   }
 
-  public List<Media> getQueuedSongs() {
+  public List<Media> getQueuedMedia() {
     return queuedMedia;
   }
 
@@ -51,7 +51,7 @@ public class Queue {
     this.queuedMedia = queuedMedia;
   }
 
-  public List<Media> getHistorySongs() {
+  public List<Media> getHistoryMedia() {
     return historyMedia;
   }
 

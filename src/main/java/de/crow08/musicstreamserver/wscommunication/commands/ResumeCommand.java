@@ -1,22 +1,22 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
 public class ResumeCommand extends Command {
-  long time;
+  long startServerTime;
 
-  public ResumeCommand(long time) {
+  public ResumeCommand(long startServerTime) {
     super("Resume");
-    this.time = time;
+    this.startServerTime = startServerTime;
   }
 
   public ResumeCommand() {
     super("Resume");
   }
 
-  public long getTime() {
-    return time;
+  public long getStartServerTime() {
+    return startServerTime;
   }
 
-  public void setTime(long time) {
-    this.time = time;
+  public void setStartServerTime(long startServerTime) {
+    this.startServerTime = startServerTime;
   }
 }

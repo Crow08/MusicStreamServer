@@ -4,12 +4,15 @@ public class MinimalMedia {
   long id;
   String title;
 
+  MediaType type;
+
   public MinimalMedia() {
   }
 
-  public MinimalMedia(long id, String title) {
+  public MinimalMedia(long id, String title, MediaType type) {
     this.id = id;
     this.title = title;
+    this.type = type;
   }
 
   public long getId() {
@@ -26,5 +29,13 @@ public class MinimalMedia {
 
   public void setTitle(String title) {
     this.title = title;
+  }
+
+  public MediaType getType() {
+    return type;
+  }
+
+  public void setType(MediaType type) {
+    this.type = type;
   }
 }

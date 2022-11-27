@@ -128,17 +128,17 @@ public class SessionController {
     Media currentMedia = queue.getCurrentSong();
     // Add current song to history
     if (currentMedia != null) {
-      queue.getHistorySongs().add(currentMedia);
+      queue.getHistoryMedia().add(currentMedia);
     }
     // If queue is empty and loopMode is active, dump history into queue.
-    if (queue.getQueuedSongs().size() == 0 && session.isLoopMode() && !queue.getHistorySongs().isEmpty()) {
-      queue.getQueuedSongs().addAll(queue.getHistorySongs());
-      queue.getHistorySongs().clear();
+    if (queue.getQueuedMedia().size() == 0 && session.isLoopMode() && !queue.getHistoryMedia().isEmpty()) {
+      queue.getQueuedMedia().addAll(queue.getHistoryMedia());
+      queue.getHistoryMedia().clear();
     }
     // Get current song from queue.
-    if (queue.getQueuedSongs().size() > 0) {
-      queue.setCurrentSong(queue.getQueuedSongs().get(0));
-      queue.getQueuedSongs().remove(0);
+    if (queue.getQueuedMedia().size() > 0) {
+      queue.setCurrentSong(queue.getQueuedMedia().get(0));
+      queue.getQueuedMedia().remove(0);
     } else {
       queue.setCurrentSong(null);
     }
@@ -154,16 +154,16 @@ public class SessionController {
     Queue queue = session.getQueue();
     Media currentMedia = queue.getCurrentSong();
     if (currentMedia != null) {
-      queue.getQueuedSongs().add(0, currentMedia);
+      queue.getQueuedMedia().add(0, currentMedia);
     }
     // if history is empty and loop mode is active use the last song int the queue instead.
-    if (queue.getHistorySongs().size() == 0 && session.isLoopMode() && !queue.getQueuedSongs().isEmpty()) {
-      queue.setCurrentSong(queue.getQueuedSongs().get(queue.getQueuedSongs().size() - 1));
-      queue.getQueuedSongs().remove(queue.getQueuedSongs().size() - 1);
+    if (queue.getHistoryMedia().size() == 0 && session.isLoopMode() && !queue.getQueuedMedia().isEmpty()) {
+      queue.setCurrentSong(queue.getQueuedMedia().get(queue.getQueuedMedia().size() - 1));
+      queue.getQueuedMedia().remove(queue.getQueuedMedia().size() - 1);
       // if the history is not empty use the latest long.
-    } else if (queue.getHistorySongs().size() > 0) {
-      queue.setCurrentSong(queue.getHistorySongs().get(queue.getHistorySongs().size() - 1));
-      queue.getHistorySongs().remove(queue.getHistorySongs().size() - 1);
+    } else if (queue.getHistoryMedia().size() > 0) {
+      queue.setCurrentSong(queue.getHistoryMedia().get(queue.getHistoryMedia().size() - 1));
+      queue.getHistoryMedia().remove(queue.getHistoryMedia().size() - 1);
     } else {
       queue.setCurrentSong(null);
     }
@@ -177,7 +177,7 @@ public class SessionController {
    */
 
   public void addSongs(Session session, List<Media> media) {
-    session.getQueue().getQueuedSongs().addAll(media);
+    session.getQueue().getQueuedMedia().addAll(media);
   }
 
   /**
@@ -242,7 +242,7 @@ public class SessionController {
    * @param session for which the queue is shuffled for.
    */
   public void shuffleQueue(Session session) {
-    Collections.shuffle(session.getQueue().getQueuedSongs());
+    Collections.shuffle(session.getQueue().getQueuedMedia());
   }
 
   /**
@@ -252,7 +252,7 @@ public class SessionController {
    * @param queueIndex to delete.
    */
   public void deleteSongFromQueue(Session session, int queueIndex) {
-    session.getQueue().getQueuedSongs().remove(queueIndex);
+    session.getQueue().getQueuedMedia().remove(queueIndex);
   }
 
   /**
@@ -262,7 +262,7 @@ public class SessionController {
    * @param historyIndex to delete.
    */
   public void deleteSongFromHistory(Session session, int historyIndex) {
-    session.getQueue().getHistorySongs().remove(historyIndex);
+    session.getQueue().getHistoryMedia().remove(historyIndex);
   }
 
   public Session createNewSession(String name) {
