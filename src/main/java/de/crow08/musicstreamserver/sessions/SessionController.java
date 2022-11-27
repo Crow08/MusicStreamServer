@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.sessions;
 
-import de.crow08.musicstreamserver.model.queue.Queue;
 import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.queue.Queue;
 import de.crow08.musicstreamserver.model.users.User;
 import de.crow08.musicstreamserver.model.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.WebSocketSessionController;

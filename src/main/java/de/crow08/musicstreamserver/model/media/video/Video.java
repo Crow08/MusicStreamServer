@@ -1,8 +1,8 @@
 package de.crow08.musicstreamserver.model.media.video;
 
+import de.crow08.musicstreamserver.model.media.Media;
 import de.crow08.musicstreamserver.model.season.Season;
 import de.crow08.musicstreamserver.model.series.Series;
-import de.crow08.musicstreamserver.model.media.Media;
 
 import javax.persistence.Entity;
 import javax.persistence.FetchType;

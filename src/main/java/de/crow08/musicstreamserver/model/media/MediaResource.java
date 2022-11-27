@@ -2,7 +2,6 @@ package de.crow08.musicstreamserver.model.media;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.neverpile.urlcrypto.PreSignedUrlEnabled;
 import de.crow08.musicstreamserver.model.album.Album;
 import de.crow08.musicstreamserver.model.album.AlbumRepository;
 import de.crow08.musicstreamserver.model.artist.Artist;
@@ -26,14 +25,12 @@ import org.jaudiotagger.audio.mp3.MP3File;
 import org.jaudiotagger.tag.TagException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,7 +50,6 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.websocket.server.PathParam;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -69,8 +65,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static de.crow08.musicstreamserver.model.media.MediaType.SONG;
 
 @RestController
 @RequestMapping("/media")
@@ -211,9 +205,9 @@ public class MediaResource {
 
     ArrayList<Media> newSongs = new ArrayList<>();
     HashMap<String, Artist> artistCache = new HashMap<>();
-    HashMap<String, Album>  albumCache = new HashMap<>();
+    HashMap<String, Album> albumCache = new HashMap<>();
     for (JsonNode songNode : dataNode.get("songs")) {
-      if(!this.isValidImportSong(songNode)){
+      if (!this.isValidImportSong(songNode)) {
         System.err.println("Error: Import is skipping invalid song.");
         continue;
       }

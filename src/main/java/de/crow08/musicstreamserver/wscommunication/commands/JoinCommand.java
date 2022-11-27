@@ -1,8 +1,8 @@
 package de.crow08.musicstreamserver.wscommunication.commands;
 
-import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.model.media.MinimalMedia;
 import de.crow08.musicstreamserver.model.users.User;
+import de.crow08.musicstreamserver.sessions.Session;
 
 import java.util.List;
 

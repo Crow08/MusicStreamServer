@@ -2,15 +2,14 @@ package de.crow08.musicstreamserver.wscommunication;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.crow08.musicstreamserver.model.media.MediaType;
+import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.media.MinimalMedia;
 import de.crow08.musicstreamserver.model.queue.Queue;
+import de.crow08.musicstreamserver.model.users.User;
+import de.crow08.musicstreamserver.model.users.UserRepository;
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
-import de.crow08.musicstreamserver.model.media.Media;
-import de.crow08.musicstreamserver.model.media.MinimalMedia;
-import de.crow08.musicstreamserver.model.users.User;
-import de.crow08.musicstreamserver.model.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.JumpCommand;
@@ -134,7 +133,7 @@ public class PlayerControlsController {
     if (connectedUser.isPresent()) {
       sessionController.addUserToSession(connectedUser.get(), session);
       return new JoinCommand(userId, minSong, getMediaFromQueue(session), getMediaFromHistory(session),
-          session.getSessionState(), session.isLoopMode(), startTime, startOffset,session.getUsers());
+          session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
     }
     return new NopCommand();
   }
@@ -243,7 +242,7 @@ public class PlayerControlsController {
   private Command startSong(Session session) {
     Optional<Media> currentSong = sessionController.getCurrentSong(session);
     if (currentSong.isPresent()) {
-      MinimalMedia minimalSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle(),currentSong.get().getType());
+      MinimalMedia minimalSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle(), currentSong.get().getType());
       long startTime = sessionController.start(session).toEpochMilli();
       return new StartCommand(minimalSong, startTime);
     }

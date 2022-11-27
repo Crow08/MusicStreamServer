@@ -35,12 +35,13 @@ values (1, 'test_song_mp3', '/songs/1.mp3', 'SONG'),
        (4, 'Buoyancy', '/songs/K-391 - Buoyancy.mp3', 'SONG'),
        (5, 'Earth', '/songs/K-391 - Earth.mp3', 'SONG'),
        (6, 'Universe', '/songs/K-391 - Universe.mp3', 'SONG'),
-       (7, 'video_Folge_1', '/videos/v1.mp4', 'VIDEO'),
-       (8, 'video_Folge_2', '/videos/v2.mp4', 'VIDEO'),
-       (9, 'video_Folge_3', '/videos/v3.mp4', 'VIDEO'),
-       (10, 'video_Folge_4', '/videos/v4.mp4', 'VIDEO'),
-       (11, 'video_Folge_5', '/videos/v5.mp4', 'VIDEO'),
-       (12, 'video_Folge_6', '/videos/v6.mp4', 'VIDEO');
+       (7, '01 Shinigami', '/videos/v1.mp4', 'VIDEO'),
+       (8, '02 Foundation Stones', '/videos/v2.mp4', 'VIDEO'),
+       (9, '03 March of the StarCross', '/videos/v3.mp4', 'VIDEO'),
+       (10, '04 Kill the Shadow', '/videos/v4.mp4', 'VIDEO'),
+       (11, '05 Wrath as a Lightning', '/videos/v5.mp4', 'VIDEO'),
+       (12, '06 The Fire', '/videos/v6.mp4', 'VIDEO'),
+       (13, '07 Born in the Dark', '/videos/v7.mp4', 'VIDEO');
 
 INSERT INTO `song` (`id`, `artist_id`, `album_id`, `spotify`)
 values (1, 1, 1, FALSE),
@@ -56,7 +57,8 @@ values (7, 2, 2),
        (9, 2, 2),
        (10, 2, 2),
        (11, 2, 2),
-       (12, 2, 2);
+       (12, 2, 2),
+       (13, 2, 2);
 
 INSERT INTO `playlist` (`id`, `author_id`, `name`)
 VALUES (1, null, 'no playlist'),

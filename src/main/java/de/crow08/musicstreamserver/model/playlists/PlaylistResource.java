@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.model.playlists;
 
-import de.crow08.musicstreamserver.authentication.AuthenticatedUser;
 import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.users.AuthenticatedUser;
 import de.crow08.musicstreamserver.model.users.User;
 import de.crow08.musicstreamserver.model.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;

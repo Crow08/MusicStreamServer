@@ -55,13 +55,16 @@ public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfi
   @Override
   public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
     registration.addDecoratorFactory(new WebSocketHandlerDecoratorFactory() {
-      @Override public WebSocketHandler decorate(WebSocketHandler handler) {
+      @Override
+      public WebSocketHandler decorate(WebSocketHandler handler) {
         return new WebSocketHandlerDecorator(handler) {
-          @Override public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+          @Override
+          public void afterConnectionEstablished(WebSocketSession session) throws Exception {
             super.afterConnectionEstablished(session);
           }
 
-          @Override public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception {
+          @Override
+          public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception {
             super.afterConnectionClosed(session, closeStatus);
             webSocketSessionController.disconnectSession(session.getId());
           }

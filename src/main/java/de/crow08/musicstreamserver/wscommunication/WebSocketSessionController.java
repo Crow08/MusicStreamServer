@@ -38,7 +38,7 @@ public class WebSocketSessionController {
     if (password == null || password.trim().isEmpty()) {
       throw new AuthenticationCredentialsNotFoundException("Password was null or empty.");
     }
-    // Add your own logic for retrieving user in fetchUserFromDb()
+
     User user = userRepository.findByUsername(username);
     if (user == null || !PasswordEncoderFactories.createDelegatingPasswordEncoder().matches(password, user.getPassword())) {
       throw new BadCredentialsException("Bad credentials for user " + username);

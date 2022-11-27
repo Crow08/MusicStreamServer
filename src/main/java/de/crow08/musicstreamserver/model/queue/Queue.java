@@ -1,7 +1,7 @@
 package de.crow08.musicstreamserver.model.queue;
 
-import de.crow08.musicstreamserver.model.playlists.Playlist;
 import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.playlists.Playlist;
 
 import java.util.ArrayList;
 import java.util.List;
