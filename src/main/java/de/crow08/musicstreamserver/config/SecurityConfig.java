@@ -54,7 +54,7 @@ public class SecurityConfig implements WebMvcConfigurer {
   }
 
   @Bean
-  SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.cors().and()
         .authorizeRequests()
         .anyRequest().fullyAuthenticated()
