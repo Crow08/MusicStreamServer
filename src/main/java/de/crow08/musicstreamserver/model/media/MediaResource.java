@@ -67,7 +67,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/media")
+@RequestMapping("/api/v1/media")
 public class MediaResource {
 
   private final MediaRepository mediaRepository;

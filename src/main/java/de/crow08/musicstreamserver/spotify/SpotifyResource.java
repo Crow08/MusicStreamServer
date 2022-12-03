@@ -17,7 +17,7 @@ import java.net.URI;
 import java.util.function.Function;
 
 @RestController
-@RequestMapping("/spotify")
+@RequestMapping("/api/v1/spotify")
 public class SpotifyResource {
 
   @Value("${spotify.client.id}")

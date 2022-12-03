@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/playlists")
+@RequestMapping("/api/v1/playlists")
 public class PlaylistResource {
 
   private final PlaylistRepository playlistRepository;

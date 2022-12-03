@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.Serial;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/v1/users")
 public class UserResource {
 
   private final UserRepository userRepository;

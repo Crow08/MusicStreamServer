@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/sessions")
+@RequestMapping("/api/v1/sessions")
 public class SessionResource {
 
   final SessionController sessionController;

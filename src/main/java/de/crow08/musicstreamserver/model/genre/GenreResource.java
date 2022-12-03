@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/genres")
+@RequestMapping("/api/v1/genres")
 public class GenreResource {
 
   private final GenreRepository genreRepository;

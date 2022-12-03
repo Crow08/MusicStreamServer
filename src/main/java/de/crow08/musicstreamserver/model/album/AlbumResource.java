@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/albums")
+@RequestMapping("/api/v1/albums")
 public class AlbumResource {
 
   private final AlbumRepository albumRepository;

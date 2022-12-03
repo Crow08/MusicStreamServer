@@ -41,7 +41,8 @@ values (1, 'test_song_mp3', '/songs/1.mp3', 'SONG'),
        (10, '04 Kill the Shadow', '/videos/v4.mp4', 'VIDEO'),
        (11, '05 Wrath as a Lightning', '/videos/v5.mp4', 'VIDEO'),
        (12, '06 The Fire', '/videos/v6.mp4', 'VIDEO'),
-       (13, '07 Born in the Dark', '/videos/v7.mp4', 'VIDEO');
+       (13, '07 Born in the Dark', '/videos/v7.mp4', 'VIDEO'),
+       (14, '08 The Shooting Star Project', '/videos/v8.mp4', 'VIDEO');
 
 INSERT INTO `song` (`id`, `artist_id`, `album_id`, `spotify`)
 values (1, 1, 1, FALSE),
@@ -58,7 +59,8 @@ values (7, 2, 2),
        (10, 2, 2),
        (11, 2, 2),
        (12, 2, 2),
-       (13, 2, 2);
+       (13, 2, 2),
+       (14, 2, 2);
 
 INSERT INTO `playlist` (`id`, `author_id`, `name`)
 VALUES (1, null, 'no playlist'),
@@ -78,7 +80,9 @@ VALUES (2, 1),
        (4, 9),
        (4, 10),
        (4, 11),
-       (4, 12);
+       (4, 12),
+       (4, 13),
+       (4, 14);
 
 INSERT INTO `song_genre` (`genre_id`, `song_id`)
 VALUES (1, 3),

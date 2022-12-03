@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/ratings")
+@RequestMapping("/api/v1/ratings")
 public class RatingResource {
 
   final RatingRepository ratingRepository;

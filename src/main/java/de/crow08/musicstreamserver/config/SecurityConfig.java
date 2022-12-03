@@ -56,9 +56,7 @@ public class SecurityConfig implements WebMvcConfigurer {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.cors().and()
-        .authorizeRequests()
-        .anyRequest().fullyAuthenticated()
-        .and()
+        .authorizeRequests(a -> a.antMatchers("/api/**").fullyAuthenticated())
         .httpBasic()
         .and()
         .csrf().disable();
@@ -75,7 +73,7 @@ public class SecurityConfig implements WebMvcConfigurer {
   @Override
   public void addResourceHandlers(final ResourceHandlerRegistry registry) {
     registry
-        .addResourceHandler("/media/data/**")
+        .addResourceHandler("/api/v1/media/data/**")
         .addResourceLocations("classpath:/")
         .setCachePeriod(3600)
         .resourceChain(true)
