@@ -11,11 +11,12 @@ import java.util.List;
 
 public class Session {
 
+  private final SessionUserSynchronization sessionUserSynchronization = new SessionUserSynchronization();
   private long id;
   private List<User> users;
   private String name;
   private SessionState sessionState = SessionState.STOP;
-  private Instant songStarted = null;
+  private Instant mediaStarted = null;
   private Duration savedProgression = Duration.ZERO;
   private Queue queue = new Queue();
   private boolean loopMode;
@@ -50,6 +51,10 @@ public class Session {
     this.users = users;
   }
 
+  public SessionUserSynchronization getSessionUserSynchronization() {
+    return sessionUserSynchronization;
+  }
+
   public String getName() {
     return name;
   }
@@ -74,12 +79,12 @@ public class Session {
     this.sessionState = sessionState;
   }
 
-  public Instant getSongStarted() {
-    return songStarted;
+  public Instant getMediaStarted() {
+    return mediaStarted;
   }
 
-  public void setSongStarted(Instant songStarted) {
-    this.songStarted = songStarted;
+  public void setMediaStarted(Instant mediaStarted) {
+    this.mediaStarted = mediaStarted;
   }
 
   public Duration getSavedProgression() {
@@ -99,6 +104,6 @@ public class Session {
   }
 
   public enum SessionState {
-    PLAY, STOP, PAUSE
+    PLAY, STOP, SYNC_PLAY, SYNC_STOP, SYNC_PAUSE, PAUSE
   }
 }

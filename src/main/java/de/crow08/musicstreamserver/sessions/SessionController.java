@@ -20,13 +20,14 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Controller for sessions to manage session states and move songs and other data while the session is being worked with.
- * User command should be working with this controller to modify data instead of accessing the session directly.
+ * Controller for sessions to manage session states and organize queue, history and other data while the session is
+ * being worked with. User command should be working with this controller to modify data instead of accessing the
+ * session directly.
  */
 @Controller
 public class SessionController {
 
-  public final static long SYNC_DELAY = 1000;
+  private final static long SYNC_DELAY = 200;
 
   private final WebSocketSessionController webSocketSessionController;
 
@@ -48,13 +49,20 @@ public class SessionController {
 
   }
 
+  private static boolean isInSyncState(Session session) {
+    Session.SessionState currentState = session.getSessionState();
+    return currentState.equals(Session.SessionState.SYNC_PLAY) ||
+        currentState.equals(Session.SessionState.SYNC_PAUSE) ||
+        currentState.equals(Session.SessionState.SYNC_STOP);
+  }
+
   private void setUpListeners() {
     webSocketSessionController.addDisconnectListener(userId -> {
       for (Session session : sessionRepository.findAll()) {
         Optional<User> disconnectedUser = session.getUsers().stream().filter(user -> user.getId() == userId).findFirst();
         disconnectedUser.ifPresent(user -> {
           this.removeUserFromSession(user, session);
-          // this messgae has to be fired here to inform other Memoers about an unexpected disconnect
+          // this message has to be fired here to inform other Users about an unexpected disconnect
           simpMessagingTemplate.convertAndSend("/topic/sessions/" + session.getId(), new LeaveCommand(userId));
         });
       }
@@ -76,30 +84,30 @@ public class SessionController {
   }
 
   /**
-   * Gets the current song being played. If no song is being played {@link #nextSong(Session)} is called
-   * automatically to move a song in the current position.
+   * Gets the current media being played. If no media is being played {@link #nextMedia(Session)} is called
+   * automatically to move an element in the current position.
    *
-   * @param session to get the song for.
-   * @return the current song.
+   * @param session to get the media for.
+   * @return the current media.
    */
-  public Optional<Media> getCurrentSong(Session session) {
-    if (session.getQueue().getCurrentSong() == null) {
-      this.nextSong(session);
+  public Optional<Media> getCurrentMedia(Session session) {
+    if (session.getQueue().getCurrentMedia() == null) {
+      this.nextMedia(session);
     }
-    return Optional.ofNullable(session.getQueue().getCurrentSong());
+    return Optional.ofNullable(session.getQueue().getCurrentMedia());
   }
 
   /**
-   * Gets the time the song has been played for. This time excludes pauses.
-   * If the song is currently playing this represents a snapshot of the time at the moment of execution.
+   * Gets the time the media has been played for. This time excludes pauses.
+   * If the media is currently playing this represents a snapshot of the time at the moment of execution.
    *
-   * @param session the session of the song to get the offset for.
-   * @return the duration of the elapsed time of the current song.
+   * @param session the session of the media to get the offset for.
+   * @return the duration of the elapsed time of the current media.
    */
-  public Duration getSongStartOffset(Session session) {
+  public Duration getMediaStartOffset(Session session) {
     Duration duration = Duration.ZERO;
-    if (session.getSongStarted() != null) {
-      duration = duration.plus(Duration.between(session.getSongStarted(), Instant.now()));
+    if (session.getMediaStarted() != null) {
+      duration = duration.plus(Duration.between(session.getMediaStarted(), Instant.now()));
     }
     if (duration != null) {
       duration = duration.plus(session.getSavedProgression());
@@ -107,26 +115,36 @@ public class SessionController {
     return duration;
   }
 
-  public Duration setSongStartOffset(Session session, long offset) {
-    Duration duration = Duration.ZERO;
-    if (session.getSongStarted() != null) {
-      session.setSongStarted(session.getSongStarted().minus(offset, ChronoUnit.MILLIS));
-    } else {
-      session.setSavedProgression(session.getSavedProgression().plus(offset, ChronoUnit.MILLIS));
+  /**
+   * Moves the current media play 0position by the defined offset and pauses the playback at the new position.
+   *
+   * @param session the session of the media to move the offset for.
+   * @param offset  the amount in ms by which the current offset should be moved.
+   * @return new current media offset see {@link #getMediaStartOffset(Session)}
+   */
+  public Duration moveMediaStartOffset(Session session, long offset) {
+    // set saved progression to current progression
+    Instant now = Instant.now();
+    if (session.getMediaStarted() != null) {
+      session.setSavedProgression(session.getSavedProgression().plus(Duration.between(session.getMediaStarted(), now)));
     }
-    return duration;
+    session.setMediaStarted(null);
+    session.setSavedProgression(session.getSavedProgression().plus(offset, ChronoUnit.MILLIS));
+    return this.getMediaStartOffset(session);
   }
 
   /**
-   * This is a macro function which tries to move the next song in the queue to the current song while
-   * adding the old current song to the history.
+   * This is a macro function which tries to move the next media in the queue to the current media while
+   * adding the old current media to the history.
    *
-   * @param session for with to move to the next song
+   * @param session for with to move to the next media
    */
-  public void nextSong(Session session) {
+  public void nextMedia(Session session) {
     Queue queue = session.getQueue();
-    Media currentMedia = queue.getCurrentSong();
-    // Add current song to history
+    session.setMediaStarted(null);
+    session.setSavedProgression(Duration.ZERO);
+    Media currentMedia = queue.getCurrentMedia();
+    // Add current media to history
     if (currentMedia != null) {
       queue.getHistoryMedia().add(currentMedia);
     }
@@ -135,104 +153,112 @@ public class SessionController {
       queue.getQueuedMedia().addAll(queue.getHistoryMedia());
       queue.getHistoryMedia().clear();
     }
-    // Get current song from queue.
+    // Get current media from queue.
     if (queue.getQueuedMedia().size() > 0) {
-      queue.setCurrentSong(queue.getQueuedMedia().get(0));
+      queue.setCurrentMedia(queue.getQueuedMedia().get(0));
       queue.getQueuedMedia().remove(0);
     } else {
-      queue.setCurrentSong(null);
+      queue.setCurrentMedia(null);
     }
   }
 
   /**
-   * This is a macro function which tries to place the latest song in the history in the current position.
-   * The currently played song will be pushed on top of the queue.
+   * This is a macro function which tries to place the latest media in the history in the current position.
+   * The currently played media will be pushed on top of the queue.
    *
-   * @param session for with to move to the next song
+   * @param session for with to move to the next media
    */
-  public void previousSong(Session session) {
+  public void previousMedia(Session session) {
     Queue queue = session.getQueue();
-    Media currentMedia = queue.getCurrentSong();
+    session.setMediaStarted(null);
+    session.setSavedProgression(Duration.ZERO);
+    Media currentMedia = queue.getCurrentMedia();
     if (currentMedia != null) {
       queue.getQueuedMedia().add(0, currentMedia);
     }
-    // if history is empty and loop mode is active use the last song int the queue instead.
+    // if history is empty and loop mode is active use the last media int the queue instead.
     if (queue.getHistoryMedia().size() == 0 && session.isLoopMode() && !queue.getQueuedMedia().isEmpty()) {
-      queue.setCurrentSong(queue.getQueuedMedia().get(queue.getQueuedMedia().size() - 1));
+      queue.setCurrentMedia(queue.getQueuedMedia().get(queue.getQueuedMedia().size() - 1));
       queue.getQueuedMedia().remove(queue.getQueuedMedia().size() - 1);
       // if the history is not empty use the latest long.
     } else if (queue.getHistoryMedia().size() > 0) {
-      queue.setCurrentSong(queue.getHistoryMedia().get(queue.getHistoryMedia().size() - 1));
+      queue.setCurrentMedia(queue.getHistoryMedia().get(queue.getHistoryMedia().size() - 1));
       queue.getHistoryMedia().remove(queue.getHistoryMedia().size() - 1);
     } else {
-      queue.setCurrentSong(null);
+      queue.setCurrentMedia(null);
     }
   }
 
   /**
-   * Adds a list of songs to the end of the queue of the session
+   * Adds a list of media to the end of the queue of the session
    *
-   * @param session for the songs to be added to
-   * @param media   list of new songs
+   * @param session for the media to be added to
+   * @param media   list of new media
    */
 
-  public void addSongs(Session session, List<Media> media) {
+  public void addMedia(Session session, List<Media> media) {
     session.getQueue().getQueuedMedia().addAll(media);
   }
 
   /**
-   * Marks the start of a song. This resets the time played of the previous song.
-   * The Song is planned to start within the given {@value #SYNC_DELAY}.
+   * Marks the start of a media. This resets the time played of the previous media.
    *
-   * @param session for which the song starts playing.
-   * @return server time of the song start.
+   * @param session for which the media starts playing.
    */
-  public Instant start(Session session) {
-    session.setSongStarted(Instant.now().plus(SYNC_DELAY, ChronoUnit.MILLIS));
+  public void start(Session session) {
+    session.setMediaStarted(null);
     session.setSavedProgression(Duration.ZERO);
-    session.setSessionState(Session.SessionState.PLAY);
-    return session.getSongStarted();
+    if (isInSyncState(session)) {
+      session.setSessionState(Session.SessionState.SYNC_PLAY);
+    } else {
+      session.setSessionState(Session.SessionState.PLAY);
+    }
   }
 
   /**
-   * Marks the song as paused and saves the progression time since the last resume or start of this song.
+   * Marks the media as paused and saves the progression time since the last resume or start of this media.
    * the current start time will be set to null.
    *
-   * @param session for which the song is being paused.
-   * @return the total accumulated time across all pauses and resumes this song has been played for.
+   * @param session for which the media is being paused.
+   * @return the total accumulated time across all pauses and resumes this media has been played for.
    */
   public Duration pause(Session session) {
     Instant now = Instant.now();
-    if (session.getSongStarted() != null) {
-      session.setSavedProgression(session.getSavedProgression().plus(Duration.between(session.getSongStarted(), now)));
+    if (session.getMediaStarted() != null) {
+      session.setSavedProgression(session.getSavedProgression().plus(Duration.between(session.getMediaStarted(), now)));
     }
-    session.setSongStarted(null);
+    session.setMediaStarted(null);
     session.setSessionState(Session.SessionState.PAUSE);
-    return this.getSongStartOffset(session);
+    return this.getMediaStartOffset(session);
   }
 
   /**
-   * Marks this song as resumed and defines a new start time.
-   * The Song is planned to start within the given {@value #SYNC_DELAY}.
+   * Marks this media as resumed and defines a new start time.
+   * The media is planned to start within the given {@value #SYNC_DELAY}.
    *
-   * @param session for which the song is being resumed.
-   * @return server time of the song start.
+   * @param session for which the media is being resumed.
+   * @return server time of the media start.
    */
   public Instant resume(Session session) {
-    Instant now = Instant.now();
-    session.setSongStarted(now.plus(SYNC_DELAY, ChronoUnit.MILLIS));
-    session.setSessionState(Session.SessionState.PLAY);
-    return session.getSongStarted();
+    if (isInSyncState(session)) {
+      session.setSessionState(Session.SessionState.SYNC_PLAY);
+      return null;
+    } else {
+      Instant now = Instant.now();
+      session.setMediaStarted(now.plus(SYNC_DELAY, ChronoUnit.MILLIS));
+      session.setSessionState(Session.SessionState.PLAY);
+      return session.getMediaStarted();
+    }
   }
 
   /**
-   * Marks the current Song as stopped deleting all process and the start time.
+   * Marks the current media as stopped deleting all process and the start time.
    *
-   * @param session for which the song is being stopped.
+   * @param session for which the media is being stopped.
    */
   public void stop(Session session) {
     session.setSavedProgression(Duration.ZERO);
-    session.setSongStarted(null);
+    session.setMediaStarted(null);
     session.setSessionState(Session.SessionState.STOP);
   }
 
@@ -246,22 +272,22 @@ public class SessionController {
   }
 
   /**
-   * Deletes song from the current queue.
+   * Deletes media from the current queue.
    *
    * @param session    to delete from.
    * @param queueIndex to delete.
    */
-  public void deleteSongFromQueue(Session session, int queueIndex) {
+  public void deleteMediaFromQueue(Session session, int queueIndex) {
     session.getQueue().getQueuedMedia().remove(queueIndex);
   }
 
   /**
-   * Deletes song from the current history.
+   * Deletes media from the current history.
    *
    * @param session      to delete from.
    * @param historyIndex to delete.
    */
-  public void deleteSongFromHistory(Session session, int historyIndex) {
+  public void deleteMediaFromHistory(Session session, int historyIndex) {
     session.getQueue().getHistoryMedia().remove(historyIndex);
   }
 
@@ -281,5 +307,42 @@ public class SessionController {
   public void removeUserFromSession(User oldUser, Session session) {
     session.getUsers().remove(oldUser);
     sessionRepository.save(session);
+  }
+
+  /**
+   * Coordinates Users to perform a synchronized start. This method has to be called for every user once to mark the as
+   * ready for the start.
+   * When the last user is the session calls this method is returns true and a synchronized start can be triggered.
+   *
+   * @param user     User who indicates its ready state
+   * @param session  session the user is in.
+   * @param mediaId  Id of the media the user marks its readiness for.
+   * @param duration timestamp in the media the user marks its readiness for.
+   * @return true if the last user is ready, false otherwise.
+   */
+  synchronized public boolean userIsReady(User user, Session session, long mediaId, long duration) {
+    SessionUserSynchronization sync = session.getSessionUserSynchronization();
+    sync.addSyncUsers(user.getId(), mediaId, duration);
+    if (session.getUsers().size() == sync.getSyncUsers().size()) {
+      sync.completeSync();
+      return true;
+    }
+    return false;
+  }
+
+  public void enterSyncState(Session session) {
+    switch (session.getSessionState()) {
+      case PLAY -> session.setSessionState(Session.SessionState.SYNC_PLAY);
+      case PAUSE -> session.setSessionState(Session.SessionState.SYNC_PAUSE);
+      case STOP -> session.setSessionState(Session.SessionState.SYNC_STOP);
+    }
+  }
+
+  public void leaveSyncState(Session session) {
+    switch (session.getSessionState()) {
+      case SYNC_PLAY -> session.setSessionState(Session.SessionState.PLAY);
+      case SYNC_PAUSE -> session.setSessionState(Session.SessionState.PAUSE);
+      case SYNC_STOP -> session.setSessionState(Session.SessionState.STOP);
+    }
   }
 }

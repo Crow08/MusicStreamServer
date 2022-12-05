@@ -17,6 +17,7 @@ import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.NopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.PauseCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.ResumeCommand;
+import de.crow08.musicstreamserver.wscommunication.commands.SetMediaCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.StartCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.StopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateHistoryCommand;
@@ -29,6 +30,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -39,6 +41,7 @@ import java.util.stream.Collectors;
 @Controller
 public class PlayerControlsController {
 
+  private static final long JOIN_DELAY = 3000L;
   private final SessionRepository sessionRepository;
   private final SessionController sessionController;
   private final UserRepository userRepository;
@@ -57,7 +60,8 @@ public class PlayerControlsController {
   public Command start(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    return startSong(session);
+    sessionController.start(session);
+    return setMedia(session);
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/jump/{offset}")
@@ -65,11 +69,9 @@ public class PlayerControlsController {
   public Command jump(@DestinationVariable long sessionId, @DestinationVariable long offset, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    sessionController.setSongStartOffset(session, offset);
-    long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
-    long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
-
-    return new JumpCommand(startTime, startOffset);
+    Duration startOffsetDuration = sessionController.moveMediaStartOffset(session, offset);
+    sessionController.enterSyncState(session);
+    return new JumpCommand(startOffsetDuration.toMillis());
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/skip")
@@ -77,8 +79,8 @@ public class PlayerControlsController {
   public Command skip(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    sessionController.nextSong(session);
-    return startSong(session);
+    sessionController.nextMedia(session);
+    return setMedia(session);
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/previous")
@@ -86,8 +88,8 @@ public class PlayerControlsController {
   public Command previous(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    sessionController.previousSong(session);
-    return startSong(session);
+    sessionController.previousMedia(session);
+    return setMedia(session);
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/pause")
@@ -104,8 +106,12 @@ public class PlayerControlsController {
   public Command resume(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    long startTime = sessionController.resume(session).toEpochMilli();
-    return new ResumeCommand(startTime);
+    Instant startTime = sessionController.resume(session);
+    if (startTime != null) {
+      return new ResumeCommand(startTime.toEpochMilli());
+    } else {
+      return new NopCommand();
+    }
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/stop")
@@ -122,17 +128,17 @@ public class PlayerControlsController {
   public Command join(@DestinationVariable long sessionId, @DestinationVariable long userId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    Optional<Media> currentSong = sessionController.getCurrentSong(session);
-    MinimalMedia minSong = null;
-    if (currentSong.isPresent()) {
-      minSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle(), currentSong.get().getType());
+    Optional<Media> currentMedia = sessionController.getCurrentMedia(session);
+    MinimalMedia minMedia = null;
+    if (currentMedia.isPresent()) {
+      minMedia = new MinimalMedia(currentMedia.get().getId(), currentMedia.get().getTitle(), currentMedia.get().getType());
     }
-    long startTime = Instant.now().plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toEpochMilli();
-    long startOffset = sessionController.getSongStartOffset(session).plus(SessionController.SYNC_DELAY, ChronoUnit.MILLIS).toMillis();
+    long startTime = Instant.now().plus(JOIN_DELAY, ChronoUnit.MILLIS).toEpochMilli();
+    long startOffset = sessionController.getMediaStartOffset(session).plus(JOIN_DELAY, ChronoUnit.MILLIS).toMillis();
     Optional<User> connectedUser = this.userRepository.findById(userId);
     if (connectedUser.isPresent()) {
       sessionController.addUserToSession(connectedUser.get(), session);
-      return new JoinCommand(userId, minSong, getMediaFromQueue(session), getMediaFromHistory(session),
+      return new JoinCommand(userId, minMedia, getMediaFromQueue(session), getMediaFromHistory(session),
           session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
     }
     return new NopCommand();
@@ -160,7 +166,7 @@ public class PlayerControlsController {
     return new UpdateQueueCommand(getMediaFromQueue(session));
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/movedSong/{previousIndex}/to/{currentIndex}")
+  @MessageMapping("/sessions/{sessionId}/commands/movedMedia/{previousIndex}/to/{currentIndex}")
   @SendTo("/topic/sessions/{sessionId}")
   public Command swapElements(@DestinationVariable long sessionId, @DestinationVariable int previousIndex, @DestinationVariable int currentIndex, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
@@ -205,33 +211,33 @@ public class PlayerControlsController {
     return new UpdateLoopModeCommand(session.isLoopMode());
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/end/{songId}")
+  @MessageMapping("/sessions/{sessionId}/commands/end/{mediaId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command end(@DestinationVariable long sessionId, @DestinationVariable long songId, String message) throws Exception {
+  public Command end(@DestinationVariable long sessionId, @DestinationVariable long mediaId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     synchronized (this) {
-      if (session.getQueue().getCurrentSong().getId() == songId) {
-        sessionController.nextSong(session);
-        return startSong(session);
+      if (session.getQueue().getCurrentMedia().getId() == mediaId) {
+        sessionController.nextMedia(session);
+        return setMedia(session);
       }
     }
     return new NopCommand();
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/deleteSongFromQueue/{queueIndex}/{type}")
+  @MessageMapping("/sessions/{sessionId}/commands/deleteMediaFromQueue/{queueIndex}/{type}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command deleteSongFromQueue(@DestinationVariable long sessionId, @DestinationVariable int queueIndex, @DestinationVariable String type, String message) throws Exception {
+  public Command deleteMediaFromQueue(@DestinationVariable long sessionId, @DestinationVariable int queueIndex, @DestinationVariable String type, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + queueIndex + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     switch (type) {
       case "queue" -> {
-        sessionController.deleteSongFromQueue(session, queueIndex);
+        sessionController.deleteMediaFromQueue(session, queueIndex);
         System.out.println("removed from queue");
         return new UpdateQueueCommand(getMediaFromQueue(session));
       }
       case "history" -> {
-        sessionController.deleteSongFromHistory(session, queueIndex);
+        sessionController.deleteMediaFromHistory(session, queueIndex);
         System.out.println("removed from history");
         return new UpdateHistoryCommand(getMediaFromHistory(session));
       }
@@ -239,19 +245,32 @@ public class PlayerControlsController {
     return new NopCommand();
   }
 
-  private Command startSong(Session session) {
-    Optional<Media> currentSong = sessionController.getCurrentSong(session);
-    if (currentSong.isPresent()) {
-      MinimalMedia minimalSong = new MinimalMedia(currentSong.get().getId(), currentSong.get().getTitle(), currentSong.get().getType());
-      long startTime = sessionController.start(session).toEpochMilli();
-      return new StartCommand(minimalSong, startTime);
+  @MessageMapping("/sessions/{sessionId}/commands/ready/{userId}/{mediaId}/{duration}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command ready(@DestinationVariable long sessionId, @DestinationVariable long userId, @DestinationVariable long mediaId, @DestinationVariable long duration, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+    Optional<User> connectedUser = this.userRepository.findById(userId);
+    Optional<Session> session = sessionRepository.findById(sessionId);
+    if (connectedUser.isPresent() && session.isPresent()) {
+      boolean allUsersReady = sessionController.userIsReady(connectedUser.get(), session.get(), mediaId, duration);
+      if (allUsersReady) {
+        sessionController.leaveSyncState(session.get());
+        if (session.get().getSessionState().equals(Session.SessionState.PLAY)) {
+          Instant startTime = sessionController.resume(session.get());
+          if (startTime != null) {
+            return new StartCommand(startTime.toEpochMilli());
+          } else {
+            throw new RuntimeException("Something went wrong. Sync has not finished properly.");
+          }
+        }
+      }
     }
-    return new StopCommand();
+    return new NopCommand();
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/addSongToQueue")
+  @MessageMapping("/sessions/{sessionId}/commands/addMediaToQueue")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command addSongToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
+  public Command addMediaToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
@@ -260,9 +279,9 @@ public class PlayerControlsController {
     return new UpdateQueueCommand();
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/addSongsToQueue")
+  @MessageMapping("/sessions/{sessionId}/commands/addMediaListToQueue")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command addSongsToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
+  public Command addMediaListToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
@@ -272,15 +291,25 @@ public class PlayerControlsController {
     return new UpdateQueueCommand();
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/playSongNext")
+  @MessageMapping("/sessions/{sessionId}/commands/playMediaNext")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command playSongNext(@DestinationVariable long sessionId, String message) throws Exception {
+  public Command playMediaNext(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     ObjectMapper mapper = new ObjectMapper();
     Media media = mapper.readValue(message, Media.class);
     session.getQueue().getQueuedMedia().add(0, media);
     return new UpdateQueueCommand();
+  }
+
+  private Command setMedia(Session session) {
+    Optional<Media> currentMedia = sessionController.getCurrentMedia(session);
+    if (currentMedia.isPresent()) {
+      MinimalMedia minimalMedia = new MinimalMedia(currentMedia.get().getId(), currentMedia.get().getTitle(), currentMedia.get().getType());
+      sessionController.enterSyncState(session);
+      return new SetMediaCommand(minimalMedia);
+    }
+    return new StopCommand();
   }
 
   private List<MinimalMedia> getMediaFromQueue(Session session) {

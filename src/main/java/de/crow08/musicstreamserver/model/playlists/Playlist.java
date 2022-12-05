@@ -30,9 +30,9 @@ public class Playlist {
   private User author;
 
   @ManyToMany(fetch = FetchType.LAZY)
-  @JoinTable(name = "song_playlist",
+  @JoinTable(name = "media_playlist",
       joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"),
-      inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"))
+      inverseJoinColumns = @JoinColumn(name = "media_id", referencedColumnName = "id"))
   private List<Media> media;
 
   public Playlist() {

@@ -35,11 +35,11 @@ public class Queue {
     this.id = id;
   }
 
-  public Media getCurrentSong() {
+  public Media getCurrentMedia() {
     return currentMedia;
   }
 
-  public void setCurrentSong(Media currentMedia) {
+  public void setCurrentMedia(Media currentMedia) {
     this.currentMedia = currentMedia;
   }
 

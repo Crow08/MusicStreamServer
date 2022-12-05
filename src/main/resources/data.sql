@@ -68,7 +68,7 @@ VALUES (1, null, 'no playlist'),
        (3, 2, 'Back in Time'),
        (4, 3, 'Bleach');
 
-INSERT INTO `song_playlist` (`playlist_id`, `song_id`)
+INSERT INTO `media_playlist` (`playlist_id`, `media_id`)
 VALUES (2, 1),
        (2, 2),
        (3, 3),
