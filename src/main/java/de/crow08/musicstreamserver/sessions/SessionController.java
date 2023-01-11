@@ -91,10 +91,12 @@ public class SessionController {
    * @return the current media.
    */
   public Optional<Media> getCurrentMedia(Session session) {
-    if (session.getQueue().getCurrentMedia() == null) {
-      this.nextMedia(session);
+    synchronized (session.getQueue()) {
+      if (session.getQueue().getCurrentMedia() == null) {
+        this.nextMedia(session);
+      }
+      return Optional.ofNullable(session.getQueue().getCurrentMedia());
     }
-    return Optional.ofNullable(session.getQueue().getCurrentMedia());
   }
 
   /**
@@ -140,25 +142,27 @@ public class SessionController {
    * @param session for with to move to the next media
    */
   public void nextMedia(Session session) {
-    Queue queue = session.getQueue();
-    session.setMediaStarted(null);
-    session.setSavedProgression(Duration.ZERO);
-    Media currentMedia = queue.getCurrentMedia();
-    // Add current media to history
-    if (currentMedia != null) {
-      queue.getHistoryMedia().add(currentMedia);
-    }
-    // If queue is empty and loopMode is active, dump history into queue.
-    if (queue.getQueuedMedia().size() == 0 && session.isLoopMode() && !queue.getHistoryMedia().isEmpty()) {
-      queue.getQueuedMedia().addAll(queue.getHistoryMedia());
-      queue.getHistoryMedia().clear();
-    }
-    // Get current media from queue.
-    if (queue.getQueuedMedia().size() > 0) {
-      queue.setCurrentMedia(queue.getQueuedMedia().get(0));
-      queue.getQueuedMedia().remove(0);
-    } else {
-      queue.setCurrentMedia(null);
+    synchronized (session.getQueue()) {
+      Queue queue = session.getQueue();
+      session.setMediaStarted(null);
+      session.setSavedProgression(Duration.ZERO);
+      Media currentMedia = queue.getCurrentMedia();
+      // Add current media to history
+      if (currentMedia != null) {
+        queue.getHistoryMedia().add(currentMedia);
+      }
+      // If queue is empty and loopMode is active, dump history into queue.
+      if (queue.getQueuedMedia().size() == 0 && session.isLoopMode() && !queue.getHistoryMedia().isEmpty()) {
+        queue.getQueuedMedia().addAll(queue.getHistoryMedia());
+        queue.getHistoryMedia().clear();
+      }
+      // Get current media from queue.
+      if (queue.getQueuedMedia().size() > 0) {
+        queue.setCurrentMedia(queue.getQueuedMedia().get(0));
+        queue.getQueuedMedia().remove(0);
+      } else {
+        queue.setCurrentMedia(null);
+      }
     }
   }
 
@@ -169,23 +173,25 @@ public class SessionController {
    * @param session for with to move to the next media
    */
   public void previousMedia(Session session) {
-    Queue queue = session.getQueue();
-    session.setMediaStarted(null);
-    session.setSavedProgression(Duration.ZERO);
-    Media currentMedia = queue.getCurrentMedia();
-    if (currentMedia != null) {
-      queue.getQueuedMedia().add(0, currentMedia);
-    }
-    // if history is empty and loop mode is active use the last media int the queue instead.
-    if (queue.getHistoryMedia().size() == 0 && session.isLoopMode() && !queue.getQueuedMedia().isEmpty()) {
-      queue.setCurrentMedia(queue.getQueuedMedia().get(queue.getQueuedMedia().size() - 1));
-      queue.getQueuedMedia().remove(queue.getQueuedMedia().size() - 1);
-      // if the history is not empty use the latest long.
-    } else if (queue.getHistoryMedia().size() > 0) {
-      queue.setCurrentMedia(queue.getHistoryMedia().get(queue.getHistoryMedia().size() - 1));
-      queue.getHistoryMedia().remove(queue.getHistoryMedia().size() - 1);
-    } else {
-      queue.setCurrentMedia(null);
+    synchronized (session.getQueue()) {
+      Queue queue = session.getQueue();
+      session.setMediaStarted(null);
+      session.setSavedProgression(Duration.ZERO);
+      Media currentMedia = queue.getCurrentMedia();
+      if (currentMedia != null) {
+        queue.getQueuedMedia().add(0, currentMedia);
+      }
+      // if history is empty and loop mode is active use the last media int the queue instead.
+      if (queue.getHistoryMedia().size() == 0 && session.isLoopMode() && !queue.getQueuedMedia().isEmpty()) {
+        queue.setCurrentMedia(queue.getQueuedMedia().get(queue.getQueuedMedia().size() - 1));
+        queue.getQueuedMedia().remove(queue.getQueuedMedia().size() - 1);
+        // if the history is not empty use the latest long.
+      } else if (queue.getHistoryMedia().size() > 0) {
+        queue.setCurrentMedia(queue.getHistoryMedia().get(queue.getHistoryMedia().size() - 1));
+        queue.getHistoryMedia().remove(queue.getHistoryMedia().size() - 1);
+      } else {
+        queue.setCurrentMedia(null);
+      }
     }
   }
 
@@ -197,7 +203,9 @@ public class SessionController {
    */
 
   public void addMedia(Session session, List<Media> media) {
-    session.getQueue().getQueuedMedia().addAll(media);
+    synchronized (session.getQueue()) {
+      session.getQueue().getQueuedMedia().addAll(media);
+    }
   }
 
   /**
@@ -268,7 +276,9 @@ public class SessionController {
    * @param session for which the queue is shuffled for.
    */
   public void shuffleQueue(Session session) {
-    Collections.shuffle(session.getQueue().getQueuedMedia());
+    synchronized (session.getQueue()) {
+      Collections.shuffle(session.getQueue().getQueuedMedia());
+    }
   }
 
   /**
@@ -278,7 +288,9 @@ public class SessionController {
    * @param queueIndex to delete.
    */
   public void deleteMediaFromQueue(Session session, int queueIndex) {
-    session.getQueue().getQueuedMedia().remove(queueIndex);
+    synchronized (session.getQueue()) {
+      session.getQueue().getQueuedMedia().remove(queueIndex);
+    }
   }
 
   /**
@@ -288,7 +300,9 @@ public class SessionController {
    * @param historyIndex to delete.
    */
   public void deleteMediaFromHistory(Session session, int historyIndex) {
-    session.getQueue().getHistoryMedia().remove(historyIndex);
+    synchronized (session.getQueue()) {
+      session.getQueue().getHistoryMedia().remove(historyIndex);
+    }
   }
 
   public Session createNewSession(String name) {
@@ -323,6 +337,7 @@ public class SessionController {
   synchronized public boolean userIsReady(User user, Session session, long mediaId, long duration) {
     SessionUserSynchronization sync = session.getSessionUserSynchronization();
     sync.addSyncUsers(user.getId(), mediaId, duration);
+    System.out.println("sync finished? expected:" + session.getUsers().size() + " actual:" + sync.getSyncUsers().size());
     if (session.getUsers().size() == sync.getSyncUsers().size()) {
       sync.completeSync();
       return true;

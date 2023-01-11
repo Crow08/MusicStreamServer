@@ -2,6 +2,7 @@ package de.crow08.musicstreamserver.sessions;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class SessionUserSynchronization {
 
@@ -16,24 +17,28 @@ public class SessionUserSynchronization {
     syncTargetDuration = -1;
   }
 
-  public List<Long> getSyncUsers() {
+  public synchronized List<Long> getSyncUsers() {
     return syncUsers;
   }
 
-  public void addSyncUsers(Long userId, long mediaId, long duration) {
+  public synchronized void addSyncUsers(Long userId, long mediaId, long duration) {
     if (mediaId == syncTargetMediaId && duration == syncTargetDuration) {
-      this.syncUsers.add(userId);
+      System.out.println("Synced user:" + userId);
+      if(syncUsers.stream().noneMatch(syncedUser -> Objects.equals(userId, syncedUser))) {
+        this.syncUsers.add(userId);
+      }
     } else if (syncTargetMediaId == -1 || syncTargetDuration == -1) {
       syncTargetMediaId = mediaId;
       syncTargetDuration = duration;
       syncUsers.clear();
+      System.out.println("new sync for user:" + userId);
       this.syncUsers.add(userId);
     } else {
       System.out.println("Sync conflict: ignoring new sync to: " + mediaId + " at: " + duration);
     }
   }
 
-  public void completeSync() {
+  public synchronized void completeSync() {
     syncUsers.clear();
     syncTargetMediaId = -1;
     syncTargetDuration = -1;
