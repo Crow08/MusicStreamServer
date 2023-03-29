@@ -32,15 +32,17 @@ public class SecurityConfig implements WebMvcConfigurer {
   final MediaRepository mediaRepository;
 
   private final UserDetailsService userDetailsService;
+  private final String clientStoragePath;
   @Value("${client.host}")
   private String host;
   @Value("${client.port}")
   private int port;
 
   @Autowired
-  public SecurityConfig(MediaRepository mediaRepository, @Qualifier("authenticatedUserService") UserDetailsService userDetailsService) {
+  public SecurityConfig(MediaRepository mediaRepository, @Qualifier("authenticatedUserService") UserDetailsService userDetailsService, @Value("${client.storage-path}") String clientStoragePath) {
     this.mediaRepository = mediaRepository;
     this.userDetailsService = userDetailsService;
+    this.clientStoragePath = clientStoragePath;
   }
 
   @Bean
@@ -74,7 +76,7 @@ public class SecurityConfig implements WebMvcConfigurer {
   public void addResourceHandlers(final ResourceHandlerRegistry registry) {
     registry
         .addResourceHandler("/api/v1/media/data/**")
-        .addResourceLocations("classpath:/")
+        .addResourceLocations("classpath:/","file:///"+clientStoragePath)
         .setCachePeriod(3600)
         .resourceChain(true)
         .addResolver(new ResourceResolver() {
