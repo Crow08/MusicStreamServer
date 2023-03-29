@@ -134,10 +134,13 @@ public class PlayerControlsController {
       minMedia = new MinimalMedia(currentMedia.get().getId(), currentMedia.get().getTitle(), currentMedia.get().getType());
     }
     long startTime = Instant.now().plus(JOIN_DELAY, ChronoUnit.MILLIS).toEpochMilli();
-    long startOffset = sessionController.getMediaStartOffset(session).plus(JOIN_DELAY, ChronoUnit.MILLIS).toMillis();
+    long startOffset = session.getSessionState().equals(Session.SessionState.PLAY) ?
+        sessionController.getMediaStartOffset(session).plus(JOIN_DELAY, ChronoUnit.MILLIS).toMillis():
+        sessionController.getMediaStartOffset(session).toMillis();
     Optional<User> connectedUser = this.userRepository.findById(userId);
     if (connectedUser.isPresent()) {
       sessionController.addUserToSession(connectedUser.get(), session);
+      System.out.println("start offset:" + startOffset);
       return new JoinCommand(userId, minMedia, getMediaFromQueue(session), getMediaFromHistory(session),
           session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
     }
@@ -258,8 +261,8 @@ public class PlayerControlsController {
       System.out.println("User "+ userId + " Ready");
       System.out.println("ALL?" + allUsersReady);
       if (allUsersReady) {
-        sessionController.leaveSyncState(session.get());
-        if (session.get().getSessionState().equals(Session.SessionState.PLAY)) {
+        if (session.get().getSessionState().equals(Session.SessionState.SYNC_PLAY)) {
+          sessionController.leaveSyncState(session.get());
           Instant startTime = sessionController.resume(session.get());
           if (startTime != null) {
             return new StartCommand(startTime.toEpochMilli());
@@ -267,6 +270,7 @@ public class PlayerControlsController {
             throw new RuntimeException("Something went wrong. Sync has not finished properly.");
           }
         }
+        sessionController.leaveSyncState(session.get());
       }
     }
     return new NopCommand();
