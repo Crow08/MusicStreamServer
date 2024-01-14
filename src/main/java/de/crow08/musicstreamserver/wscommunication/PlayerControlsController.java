@@ -25,15 +25,20 @@ import de.crow08.musicstreamserver.wscommunication.commands.UpdateLoopModeComman
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueAndHistoryCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueCommand;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.stereotype.Controller;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -46,13 +51,17 @@ public class PlayerControlsController {
   private final SessionController sessionController;
   private final UserRepository userRepository;
 
+  private SimpMessageSendingOperations messagingTemplate;
+
   @Autowired
   public PlayerControlsController(SessionRepository sessionRepository,
                                   SessionController sessionController,
-                                  UserRepository userRepository) {
+                                  UserRepository userRepository,
+                                  SimpMessageSendingOperations messagingTemplate) {
     this.sessionRepository = sessionRepository;
     this.sessionController = sessionController;
     this.userRepository = userRepository;
+    this.messagingTemplate = messagingTemplate;
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/start")
@@ -135,7 +144,7 @@ public class PlayerControlsController {
     }
     long startTime = Instant.now().plus(JOIN_DELAY, ChronoUnit.MILLIS).toEpochMilli();
     long startOffset = session.getSessionState().equals(Session.SessionState.PLAY) ?
-        sessionController.getMediaStartOffset(session).plus(JOIN_DELAY, ChronoUnit.MILLIS).toMillis():
+        sessionController.getMediaStartOffset(session).plus(JOIN_DELAY, ChronoUnit.MILLIS).toMillis() :
         sessionController.getMediaStartOffset(session).toMillis();
     Optional<User> connectedUser = this.userRepository.findById(userId);
     if (connectedUser.isPresent()) {
@@ -171,7 +180,7 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/movedMedia/{previousIndex}/to/{currentIndex}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command swapElements(@DestinationVariable long sessionId, @DestinationVariable int previousIndex, @DestinationVariable int currentIndex, String message) throws Exception {
+  public Command movedMedia(@DestinationVariable long sessionId, @DestinationVariable int previousIndex, @DestinationVariable int currentIndex, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
 
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
@@ -182,7 +191,8 @@ public class PlayerControlsController {
         // Dragged Element is from history
         if (queue.getHistoryMedia().size() > currentIndex) {
           // Dragged into history
-          Collections.swap(queue.getHistoryMedia(), previousIndex, currentIndex);
+          Media media = queue.getHistoryMedia().remove(previousIndex);
+          queue.getHistoryMedia().add(currentIndex, media);
         } else {
           // dragged into queue
           Media media = queue.getHistoryMedia().remove(previousIndex);
@@ -199,13 +209,51 @@ public class PlayerControlsController {
           queue.getQueuedMedia().remove(queuePos);
         } else {
           // Dragged into queue
-          Collections.swap(queue.getQueuedMedia(), previousIndex - (queue.getHistoryMedia().size() + 1), currentIndex - (queue.getHistoryMedia().size() + 1));
+          Media media = queue.getQueuedMedia().remove(previousIndex - (queue.getHistoryMedia().size() + 1));
+          queue.getQueuedMedia().add(currentIndex - (queue.getHistoryMedia().size() + 1), media);
         }
       }
     }
-
     return new UpdateQueueAndHistoryCommand(getMediaFromQueue(session), getMediaFromHistory(session));
   }
+
+  @MessageMapping("/sessions/{sessionId}/commands/skipTo/{mediaId}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command skipTo(@Payload Message msg, @DestinationVariable long sessionId, @DestinationVariable int mediaId, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    synchronized (session.getQueue()) {
+      Queue queue = session.getQueue();
+      Media currentMedia;
+      if (queue.getQueuedMedia().stream().anyMatch(media -> media.getId() == mediaId)) {
+        do {
+          sessionController.nextMedia(session);
+          currentMedia = queue.getCurrentMedia();
+        } while (currentMedia != null && currentMedia.getId() != mediaId);
+      } else if (queue.getHistoryMedia().stream().anyMatch(media -> media.getId() == mediaId)) {
+        do {
+          sessionController.previousMedia(session);
+          currentMedia = queue.getCurrentMedia();
+        } while (currentMedia != null && currentMedia.getId() != mediaId);
+      }
+    }
+    UpdateQueueAndHistoryCommand updateQueueAndHistoryCommand = new UpdateQueueAndHistoryCommand(getMediaFromQueue(session), getMediaFromHistory(session));
+    this.messagingTemplate.convertAndSend("/topic/sessions/" + sessionId, updateQueueAndHistoryCommand, createHeaders(msg));
+    return setMedia(session);
+  }
+
+  private MessageHeaders createHeaders(Message msg) {
+    MessageHeaders headers = msg.getHeaders();
+    String msgSessionId = SimpMessageHeaderAccessor.getSessionId(headers);
+    SimpMessageHeaderAccessor headerAccessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+    if (msgSessionId != null) {
+      headerAccessor.setSessionId(msgSessionId);
+    }
+    headerAccessor.setLeaveMutable(true);
+    return headerAccessor.getMessageHeaders();
+  }
+
 
   @MessageMapping("/sessions/{sessionId}/commands/loop/{loopMode}")
   @SendTo("/topic/sessions/{sessionId}")
@@ -258,7 +306,7 @@ public class PlayerControlsController {
     Optional<Session> session = sessionRepository.findById(sessionId);
     if (connectedUser.isPresent() && session.isPresent()) {
       boolean allUsersReady = sessionController.userIsReady(connectedUser.get(), session.get(), mediaId, duration);
-      System.out.println("User "+ userId + " Ready");
+      System.out.println("User " + userId + " Ready");
       System.out.println("ALL?" + allUsersReady);
       if (allUsersReady) {
         if (session.get().getSessionState().equals(Session.SessionState.SYNC_PLAY)) {
