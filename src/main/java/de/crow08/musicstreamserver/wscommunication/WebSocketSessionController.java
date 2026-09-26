@@ -13,9 +13,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class WebSocketSessionController {
@@ -23,7 +24,7 @@ public class WebSocketSessionController {
   final UserRepository userRepository;
   private final List<DisconnectObserver> dcListeners = new ArrayList<>();
   private final List<ConnectObserver> cListeners = new ArrayList<>();
-  private final Map<String, Long> sessions = new HashMap<>();
+  private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
   @Autowired
   public WebSocketSessionController(UserRepository userRepository) {
@@ -44,9 +45,14 @@ public class WebSocketSessionController {
       throw new BadCredentialsException("Bad credentials for user " + username);
     }
 
-    this.sessions.put(wsSessionId, user.getId());
+    Connection connection = new Connection(user.getId());
+    long musicSession = Long.parseLong(musicSessionId);
+    if (musicSession != 0) {
+      connection.musicSessions.add(musicSession);
+    }
+    this.connections.put(wsSessionId, connection);
     for (final ConnectObserver listener : this.cListeners) {
-      listener.observeConnect(user.getId(), Long.parseLong(musicSessionId));
+      listener.observeConnect(user.getId(), musicSession);
     }
     // null credentials, we do not pass the password along
     return new UsernamePasswordAuthenticationToken(
@@ -56,13 +62,50 @@ public class WebSocketSessionController {
     );
   }
 
-  public void disconnectSession(final String sessionId) {
-    Long userId = this.sessions.remove(sessionId);
-    if (userId != null) {
-      for (final DisconnectObserver listener : this.dcListeners) {
-        listener.observeDisconnect(userId);
+  /**
+   * Records that the user of the given WebSocket connection joined a music session through this connection.
+   */
+  public void joinMusicSession(final String wsSessionId, final long musicSessionId) {
+    Connection connection = this.connections.get(wsSessionId);
+    if (connection != null) {
+      connection.musicSessions.add(musicSessionId);
+    }
+  }
+
+  /**
+   * Records that the given WebSocket connection left a music session.
+   *
+   * @return true if the user has no other connection in that music session and should be removed from it.
+   */
+  public boolean leaveMusicSession(final String wsSessionId, final long userId, final long musicSessionId) {
+    Connection connection = this.connections.get(wsSessionId);
+    if (connection != null) {
+      connection.musicSessions.remove(musicSessionId);
+    }
+    return !isUserConnectedToMusicSession(userId, musicSessionId);
+  }
+
+  /**
+   * Handles a closed WebSocket connection. The user is only reported as disconnected from the music sessions no other
+   * connection of the same user (e.g. another browser tab) is still part of.
+   */
+  public void disconnectSession(final String wsSessionId) {
+    Connection connection = this.connections.remove(wsSessionId);
+    if (connection == null) {
+      return;
+    }
+    for (final long musicSessionId : connection.musicSessions) {
+      if (!isUserConnectedToMusicSession(connection.userId, musicSessionId)) {
+        for (final DisconnectObserver listener : this.dcListeners) {
+          listener.observeDisconnect(connection.userId, musicSessionId);
+        }
       }
     }
+  }
+
+  private boolean isUserConnectedToMusicSession(final long userId, final long musicSessionId) {
+    return this.connections.values().stream()
+        .anyMatch(c -> c.userId == userId && c.musicSessions.contains(musicSessionId));
   }
 
   public void addDisconnectListener(DisconnectObserver newListener) {
@@ -74,11 +117,19 @@ public class WebSocketSessionController {
   }
 
   public interface DisconnectObserver {
-    void observeDisconnect(Long UserId);
+    void observeDisconnect(long userId, long sessionId);
   }
 
   public interface ConnectObserver {
     void observeConnect(long userId, long sessionId);
   }
-}
 
+  private static final class Connection {
+    private final long userId;
+    private final Set<Long> musicSessions = ConcurrentHashMap.newKeySet();
+
+    private Connection(long userId) {
+      this.userId = userId;
+    }
+  }
+}

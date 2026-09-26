@@ -77,16 +77,15 @@ public class SessionController {
   }
 
   private void setUpListeners() {
-    webSocketSessionController.addDisconnectListener(userId -> {
-      for (Session session : sessionRepository.findAll()) {
-        Optional<User> disconnectedUser = session.getUsers().stream().filter(user -> user.getId() == userId).findFirst();
-        disconnectedUser.ifPresent(user -> {
-          this.removeUserFromSession(user, session);
-          // this message has to be fired here to inform other Users about an unexpected disconnect
-          simpMessagingTemplate.convertAndSend("/topic/sessions/" + session.getId(), new LeaveCommand(userId));
-        });
-      }
-    });
+    webSocketSessionController.addDisconnectListener((userId, sessionId) ->
+        sessionRepository.findById(sessionId).ifPresent(session -> {
+          Optional<User> disconnectedUser = session.getUsers().stream().filter(user -> user.getId() == userId).findFirst();
+          disconnectedUser.ifPresent(user -> {
+            this.removeUserFromSession(user, session);
+            // this message has to be fired here to inform other Users about an unexpected disconnect
+            simpMessagingTemplate.convertAndSend("/topic/sessions/" + session.getId(), new LeaveCommand(userId));
+          });
+        }));
     webSocketSessionController.addConnectListener((userId, sessionId) -> {
       Optional<Session> session = getSessionsAsStream().filter(ses -> sessionId == ses.getId()).findFirst();
       if (session.isPresent()) {

@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -52,6 +53,7 @@ public class PlayerControlsController {
   private final SessionController sessionController;
   private final UserRepository userRepository;
   private final MediaRepository mediaRepository;
+  private final WebSocketSessionController webSocketSessionController;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   private SimpMessageSendingOperations messagingTemplate;
@@ -61,11 +63,13 @@ public class PlayerControlsController {
                                   SessionController sessionController,
                                   UserRepository userRepository,
                                   MediaRepository mediaRepository,
+                                  WebSocketSessionController webSocketSessionController,
                                   SimpMessageSendingOperations messagingTemplate) {
     this.sessionRepository = sessionRepository;
     this.sessionController = sessionController;
     this.userRepository = userRepository;
     this.mediaRepository = mediaRepository;
+    this.webSocketSessionController = webSocketSessionController;
     this.messagingTemplate = messagingTemplate;
   }
 
@@ -139,7 +143,8 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/join/{userId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command join(@DestinationVariable long sessionId, @DestinationVariable long userId, String message) throws Exception {
+  public Command join(@DestinationVariable long sessionId, @DestinationVariable long userId,
+                      @Header(SimpMessageHeaderAccessor.SESSION_ID_HEADER) String wsSessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Optional<Media> currentMedia = sessionController.getCurrentMedia(session);
@@ -153,6 +158,7 @@ public class PlayerControlsController {
         sessionController.getMediaStartOffset(session).toMillis();
     Optional<User> connectedUser = this.userRepository.findById(userId);
     if (connectedUser.isPresent()) {
+      webSocketSessionController.joinMusicSession(wsSessionId, sessionId);
       sessionController.addUserToSession(connectedUser.get(), session);
       System.out.println("start offset:" + startOffset);
       return new JoinCommand(userId, minMedia, getMediaFromQueue(session), getMediaFromHistory(session),
@@ -163,9 +169,14 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/leave/{userId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command leave(@DestinationVariable long sessionId, @DestinationVariable long userId, String message) throws Exception {
+  public Command leave(@DestinationVariable long sessionId, @DestinationVariable long userId,
+                       @Header(SimpMessageHeaderAccessor.SESSION_ID_HEADER) String wsSessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    // the user stays in the session as long as another connection (e.g. browser tab) of it is still in there
+    if (!webSocketSessionController.leaveMusicSession(wsSessionId, userId, sessionId)) {
+      return new NopCommand();
+    }
     Optional<User> disconnectedUser = session.getUsers().stream().filter(user -> user.getId() == userId).findFirst();
     if (disconnectedUser.isPresent()) {
       sessionController.removeUserFromSession(disconnectedUser.get(), session);
