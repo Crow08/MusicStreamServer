@@ -1,8 +1,9 @@
 package de.crow08.musicstreamserver.wscommunication;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.media.MediaRepository;
 import de.crow08.musicstreamserver.model.media.MinimalMedia;
 import de.crow08.musicstreamserver.model.queue.Queue;
 import de.crow08.musicstreamserver.model.users.User;
@@ -38,6 +39,7 @@ import org.springframework.stereotype.Controller;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -49,6 +51,8 @@ public class PlayerControlsController {
   private final SessionRepository sessionRepository;
   private final SessionController sessionController;
   private final UserRepository userRepository;
+  private final MediaRepository mediaRepository;
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   private SimpMessageSendingOperations messagingTemplate;
 
@@ -56,10 +60,12 @@ public class PlayerControlsController {
   public PlayerControlsController(SessionRepository sessionRepository,
                                   SessionController sessionController,
                                   UserRepository userRepository,
+                                  MediaRepository mediaRepository,
                                   SimpMessageSendingOperations messagingTemplate) {
     this.sessionRepository = sessionRepository;
     this.sessionController = sessionController;
     this.userRepository = userRepository;
+    this.mediaRepository = mediaRepository;
     this.messagingTemplate = messagingTemplate;
   }
 
@@ -315,12 +321,11 @@ public class PlayerControlsController {
   public Command addMediaToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    ObjectMapper mapper = new ObjectMapper();
-    Media media = mapper.readValue(message, Media.class);
+    Optional<Media> media = findMedia(objectMapper.readTree(message));
     synchronized (session.getQueue()) {
-      session.getQueue().getQueuedMedia().add(media);
+      media.ifPresent(m -> session.getQueue().getQueuedMedia().add(m));
     }
-    return new UpdateQueueCommand();
+    return new UpdateQueueCommand(getMediaFromQueue(session));
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/addMediaListToQueue")
@@ -328,13 +333,14 @@ public class PlayerControlsController {
   public Command addMediaListToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    ObjectMapper mapper = new ObjectMapper();
-    List<Media> media = mapper.readValue(message, new TypeReference<>() {
-    });
+    List<Media> media = new ArrayList<>();
+    for (JsonNode node : objectMapper.readTree(message)) {
+      findMedia(node).ifPresent(media::add);
+    }
     synchronized (session.getQueue()) {
       session.getQueue().getQueuedMedia().addAll(media);
     }
-    return new UpdateQueueCommand();
+    return new UpdateQueueCommand(getMediaFromQueue(session));
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/playMediaNext")
@@ -342,12 +348,22 @@ public class PlayerControlsController {
   public Command playMediaNext(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    ObjectMapper mapper = new ObjectMapper();
-    Media media = mapper.readValue(message, Media.class);
+    Optional<Media> media = findMedia(objectMapper.readTree(message));
     synchronized (session.getQueue()) {
-      session.getQueue().getQueuedMedia().add(0, media);
+      media.ifPresent(m -> session.getQueue().getQueuedMedia().add(0, m));
     }
-    return new UpdateQueueCommand();
+    return new UpdateQueueCommand(getMediaFromQueue(session));
+  }
+
+  /**
+   * Resolves media sent by a client via its id. The remaining client data is not trusted.
+   */
+  private Optional<Media> findMedia(JsonNode mediaNode) {
+    JsonNode id = mediaNode.get("id");
+    if (id == null || !id.canConvertToLong()) {
+      return Optional.empty();
+    }
+    return mediaRepository.findById(id.asLong());
   }
 
   private Command setMedia(Session session) {
