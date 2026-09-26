@@ -18,7 +18,6 @@ import de.crow08.musicstreamserver.wscommunication.commands.NopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.PauseCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.ResumeCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.SetMediaCommand;
-import de.crow08.musicstreamserver.wscommunication.commands.StartCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.StopCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateHistoryCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateLoopModeCommand;
@@ -305,21 +304,8 @@ public class PlayerControlsController {
     Optional<User> connectedUser = this.userRepository.findById(userId);
     Optional<Session> session = sessionRepository.findById(sessionId);
     if (connectedUser.isPresent() && session.isPresent()) {
-      boolean allUsersReady = sessionController.userIsReady(connectedUser.get(), session.get(), mediaId, duration);
-      System.out.println("User " + userId + " Ready");
-      System.out.println("ALL?" + allUsersReady);
-      if (allUsersReady) {
-        if (session.get().getSessionState().equals(Session.SessionState.SYNC_PLAY)) {
-          sessionController.leaveSyncState(session.get());
-          Instant startTime = sessionController.resume(session.get());
-          if (startTime != null) {
-            return new StartCommand(startTime.toEpochMilli());
-          } else {
-            throw new RuntimeException("Something went wrong. Sync has not finished properly.");
-          }
-        }
-        sessionController.leaveSyncState(session.get());
-      }
+      // duration is not compared: browsers snap the media position differently, the server offset is authoritative
+      return sessionController.userIsReady(connectedUser.get(), session.get(), mediaId).orElseGet(NopCommand::new);
     }
     return new NopCommand();
   }

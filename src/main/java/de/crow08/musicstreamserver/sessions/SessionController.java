@@ -5,17 +5,24 @@ import de.crow08.musicstreamserver.model.queue.Queue;
 import de.crow08.musicstreamserver.model.users.User;
 import de.crow08.musicstreamserver.model.users.UserRepository;
 import de.crow08.musicstreamserver.wscommunication.WebSocketSessionController;
+import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
+import de.crow08.musicstreamserver.wscommunication.commands.StartCommand;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -28,6 +35,14 @@ import java.util.stream.StreamSupport;
 public class SessionController {
 
   private final static long SYNC_DELAY = 200;
+
+  private final static long SYNC_TIMEOUT = 5000;
+
+  private final ScheduledExecutorService syncTimeoutScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
+    Thread thread = new Thread(runnable, "session-sync-timeout");
+    thread.setDaemon(true);
+    return thread;
+  });
 
   private final WebSocketSessionController webSocketSessionController;
 
@@ -47,6 +62,11 @@ public class SessionController {
     this.sessionRepository = sessionRepository;
     setUpListeners();
 
+  }
+
+  @PreDestroy
+  public void shutdown() {
+    syncTimeoutScheduler.shutdownNow();
   }
 
   private static boolean isInSyncState(Session session) {
@@ -321,35 +341,61 @@ public class SessionController {
   public void removeUserFromSession(User oldUser, Session session) {
     session.getUsers().remove(oldUser);
     sessionRepository.save(session);
+    // the removed user might have been the last one the current sync round was waiting for
+    synchronized (session) {
+      if (isInSyncState(session) && session.getSessionUserSynchronization().allReady(getUserIds(session))) {
+        sendToSession(session, finishSync(session));
+      }
+    }
   }
 
   /**
-   * Coordinates Users to perform a synchronized start. This method has to be called for every user once to mark the as
-   * ready for the start.
-   * When the last user is the session calls this method is returns true and a synchronized start can be triggered.
+   * Coordinates Users to perform a synchronized start. This method has to be called for every user once to mark it as
+   * ready for the start of the current sync round (see {@link #enterSyncState(Session)}).
+   * When the last user of the session is ready the round is finished and the resulting command is returned.
    *
-   * @param user     User who indicates its ready state
-   * @param session  session the user is in.
-   * @param mediaId  Id of the media the user marks its readiness for.
-   * @param duration timestamp in the media the user marks its readiness for.
-   * @return true if the last user is ready, false otherwise.
+   * @param user    User who indicates its ready state
+   * @param session session the user is in.
+   * @param mediaId Id of the media the user marks its readiness for.
+   * @return the command to broadcast if the round is finished ({@link StartCommand} for a pending playback),
+   * empty otherwise.
    */
-  synchronized public boolean userIsReady(User user, Session session, long mediaId, long duration) {
-    SessionUserSynchronization sync = session.getSessionUserSynchronization();
-    sync.addSyncUsers(user.getId(), mediaId, duration);
-    System.out.println("sync finished? expected:" + session.getUsers().size() + " actual:" + sync.getSyncUsers().size());
-    if (session.getUsers().size() == sync.getSyncUsers().size()) {
-      sync.completeSync();
-      return true;
+  public Optional<Command> userIsReady(User user, Session session, long mediaId) {
+    synchronized (session) {
+      SessionUserSynchronization sync = session.getSessionUserSynchronization();
+      if (!isInSyncState(session) || !sync.addReadyUser(user.getId(), mediaId)) {
+        return Optional.empty();
+      }
+      List<Long> userIds = getUserIds(session);
+      System.out.println("User " + user.getId() + " ready for media " + mediaId + ", session users: " + userIds);
+      if (sync.allReady(userIds)) {
+        return Optional.ofNullable(finishSync(session));
+      }
+      return Optional.empty();
     }
-    return false;
   }
 
+  /**
+   * Moves the session into its sync state and starts a new sync round for the current media. Any running round is
+   * replaced. If not all users are ready within {@value #SYNC_TIMEOUT}ms the round is finished anyway.
+   *
+   * @param session the session to synchronize.
+   */
   public void enterSyncState(Session session) {
-    switch (session.getSessionState()) {
-      case PLAY -> session.setSessionState(Session.SessionState.SYNC_PLAY);
-      case PAUSE -> session.setSessionState(Session.SessionState.SYNC_PAUSE);
-      case STOP -> session.setSessionState(Session.SessionState.SYNC_STOP);
+    synchronized (session) {
+      Media currentMedia = session.getQueue().getCurrentMedia();
+      if (currentMedia == null) {
+        return;
+      }
+      switch (session.getSessionState()) {
+        case PLAY -> session.setSessionState(Session.SessionState.SYNC_PLAY);
+        case PAUSE -> session.setSessionState(Session.SessionState.SYNC_PAUSE);
+        case STOP -> session.setSessionState(Session.SessionState.SYNC_STOP);
+      }
+      SessionUserSynchronization sync = session.getSessionUserSynchronization();
+      long round = sync.startRound(currentMedia.getId());
+      sync.setTimeout(round, syncTimeoutScheduler.schedule(() -> onSyncTimeout(session, round), SYNC_TIMEOUT,
+          TimeUnit.MILLISECONDS));
     }
   }
 
@@ -359,5 +405,46 @@ public class SessionController {
       case SYNC_PAUSE -> session.setSessionState(Session.SessionState.PAUSE);
       case SYNC_STOP -> session.setSessionState(Session.SessionState.STOP);
     }
+  }
+
+  private void onSyncTimeout(Session session, long round) {
+    synchronized (session) {
+      SessionUserSynchronization sync = session.getSessionUserSynchronization();
+      if (!sync.isCurrentRound(round)) {
+        return;
+      }
+      if (!isInSyncState(session)) {
+        // session has been paused or stopped in the meantime
+        sync.completeRound();
+        return;
+      }
+      System.out.println("Sync timeout in session " + session.getId() + ": starting without all users being ready");
+      sendToSession(session, finishSync(session));
+    }
+  }
+
+  /**
+   * Finishes the current sync round and leaves the sync state. Must be called while holding the session lock.
+   *
+   * @return a {@link StartCommand} if playback is pending, null otherwise.
+   */
+  private Command finishSync(Session session) {
+    session.getSessionUserSynchronization().completeRound();
+    boolean startPlayback = session.getSessionState().equals(Session.SessionState.SYNC_PLAY);
+    leaveSyncState(session);
+    if (startPlayback) {
+      return new StartCommand(resume(session).toEpochMilli());
+    }
+    return null;
+  }
+
+  private void sendToSession(Session session, Command command) {
+    if (command != null) {
+      simpMessagingTemplate.convertAndSend("/topic/sessions/" + session.getId(), command);
+    }
+  }
+
+  private List<Long> getUserIds(Session session) {
+    return session.getUsers().stream().map(User::getId).collect(Collectors.toList());
   }
 }

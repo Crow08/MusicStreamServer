@@ -1,59 +1,81 @@
 package de.crow08.musicstreamserver.sessions;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ScheduledFuture;
 
+/**
+ * State of a single synchronization round of a session. A round is started by the server whenever the session enters
+ * a sync state and is finished either when all users reported ready for the target media or when its timeout expires.
+ * Each round has its own id so that a timeout of an outdated round can not interfere with a newer one.
+ */
 public class SessionUserSynchronization {
 
-  private final List<Long> syncUsers;
-  private long syncTargetMediaId;
-  private long syncTargetDuration;
+  private final Set<Long> readyUsers = new HashSet<>();
+  private long round = 0;
+  private boolean active = false;
+  private long targetMediaId = -1;
+  private ScheduledFuture<?> timeout;
 
-
-  public SessionUserSynchronization() {
-    syncUsers = new ArrayList<>();
-    syncTargetMediaId = -1;
-    syncTargetDuration = -1;
+  /**
+   * Starts a new round and discards the previous one including its timeout.
+   *
+   * @param mediaId the media all users have to be ready for.
+   * @return the id of the new round.
+   */
+  public synchronized long startRound(long mediaId) {
+    cancelTimeout();
+    readyUsers.clear();
+    targetMediaId = mediaId;
+    active = true;
+    return ++round;
   }
 
-  public synchronized List<Long> getSyncUsers() {
-    return syncUsers;
-  }
-
-  public synchronized void addSyncUsers(Long userId, long mediaId, long duration) {
-    if (mediaId == syncTargetMediaId && duration == syncTargetDuration) {
-      System.out.println("Synced user:" + userId);
-      if (syncUsers.stream().noneMatch(syncedUser -> Objects.equals(userId, syncedUser))) {
-        this.syncUsers.add(userId);
-      }
-    } else if (syncTargetMediaId == -1 || syncTargetDuration == -1) {
-      System.out.println("new sync for user:" + userId);
-      newSyncTarget(mediaId, duration);
-      Timer timer = new Timer();
-      timer.schedule(new TimerTask() {
-        @Override
-        public void run() {
-          completeSync();
-        }
-      }, 5000);
-      this.syncUsers.add(userId);
+  public synchronized void setTimeout(long round, ScheduledFuture<?> timeout) {
+    if (this.round == round && active) {
+      this.timeout = timeout;
     } else {
-      System.out.println("Sync conflict: ignoring new sync to: " + mediaId + " at: " + duration);
+      timeout.cancel(false);
     }
   }
 
-  private void newSyncTarget(long mediaId, long duration) {
-    syncTargetMediaId = mediaId;
-    syncTargetDuration = duration;
-    syncUsers.clear();
+  /**
+   * Marks a user as ready. Ready messages for other media (e.g. late messages of an outdated round) are ignored.
+   *
+   * @return true if the user was accepted for the current round.
+   */
+  public synchronized boolean addReadyUser(long userId, long mediaId) {
+    if (!active || mediaId != targetMediaId) {
+      return false;
+    }
+    readyUsers.add(userId);
+    return true;
   }
 
-  public synchronized void completeSync() {
-    syncUsers.clear();
-    syncTargetMediaId = -1;
-    syncTargetDuration = -1;
+  public synchronized boolean allReady(Collection<Long> userIds) {
+    return active && readyUsers.containsAll(userIds);
+  }
+
+  public synchronized boolean isActive() {
+    return active;
+  }
+
+  public synchronized boolean isCurrentRound(long round) {
+    return active && this.round == round;
+  }
+
+  public synchronized void completeRound() {
+    cancelTimeout();
+    readyUsers.clear();
+    targetMediaId = -1;
+    active = false;
+  }
+
+  private void cancelTimeout() {
+    if (timeout != null) {
+      timeout.cancel(false);
+      timeout = null;
+    }
   }
 }
