@@ -147,10 +147,14 @@ public class PlayerControlsController {
                       @Header(SimpMessageHeaderAccessor.SESSION_ID_HEADER) String wsSessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    Optional<Media> currentMedia = sessionController.getCurrentMedia(session);
+    // read without side effects: sessionController.getCurrentMedia() would move the first queued media into place
+    Media currentMedia;
+    synchronized (session.getQueue()) {
+      currentMedia = session.getQueue().getCurrentMedia();
+    }
     MinimalMedia minMedia = null;
-    if (currentMedia.isPresent()) {
-      minMedia = new MinimalMedia(currentMedia.get().getId(), currentMedia.get().getTitle(), currentMedia.get().getType());
+    if (currentMedia != null) {
+      minMedia = new MinimalMedia(currentMedia.getId(), currentMedia.getTitle(), currentMedia.getType());
     }
     long startTime = Instant.now().plus(JOIN_DELAY, ChronoUnit.MILLIS).toEpochMilli();
     long startOffset = session.getSessionState().equals(Session.SessionState.PLAY) ?
