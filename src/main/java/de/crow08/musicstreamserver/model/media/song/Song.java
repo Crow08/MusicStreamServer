@@ -4,6 +4,7 @@ import de.crow08.musicstreamserver.model.album.Album;
 import de.crow08.musicstreamserver.model.artist.Artist;
 import de.crow08.musicstreamserver.model.genre.Genre;
 import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.media.MediaType;
 
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -40,6 +41,7 @@ public class Song extends Media {
 
   public Song(String title, String uri) {
     super(title, uri);
+    setType(MediaType.SONG);
   }
 
   public Artist getArtist() {

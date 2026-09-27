@@ -1,6 +1,7 @@
 package de.crow08.musicstreamserver.model.media.video;
 
 import de.crow08.musicstreamserver.model.media.Media;
+import de.crow08.musicstreamserver.model.media.MediaType;
 import de.crow08.musicstreamserver.model.season.Season;
 import de.crow08.musicstreamserver.model.series.Series;
 
@@ -27,6 +28,7 @@ public class Video extends Media {
 
   public Video(String title, String uri) {
     super(title, uri);
+    setType(MediaType.VIDEO);
   }
 
   public Series getSeries() {
