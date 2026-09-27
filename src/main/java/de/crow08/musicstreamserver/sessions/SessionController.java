@@ -34,7 +34,8 @@ import java.util.stream.StreamSupport;
 @Controller
 public class SessionController {
 
-  private final static long SYNC_DELAY = 200;
+  // lead time for resuming, so the resume command reaches all clients in time (late clients compensate)
+  private final static long SYNC_DELAY = 500;
 
   private final static long SYNC_TIMEOUT = 5000;
 
