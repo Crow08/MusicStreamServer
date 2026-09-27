@@ -405,6 +405,22 @@ public class PlayerControlsController {
     return mediaRepository.findById(id.asLong());
   }
 
+  @MessageMapping("/sessions/{sessionId}/commands/playMediaNow")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command playMediaNow(@Payload Message msg, @DestinationVariable long sessionId, String message) throws Exception {
+    System.out.println("Received: " + sessionId + " - " + message);
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    Media media = findMedia(objectMapper.readTree(message)).orElseThrow(() -> new Exception("Media not found"));
+    synchronized (session.getQueue()) {
+      session.getQueue().getQueuedMedia().add(0, media);
+      sessionController.nextMedia(session);
+    }
+    // the clients can not derive the new queue and history from SetMedia, since the media was not in their queue
+    this.messagingTemplate.convertAndSend("/topic/sessions/" + sessionId,
+        new UpdateQueueAndHistoryCommand(getMediaFromQueue(session), getMediaFromHistory(session)), createHeaders(msg));
+    return setMedia(session);
+  }
+
   private Command setMedia(Session session) {
     Optional<Media> currentMedia = sessionController.getCurrentMedia(session);
     if (currentMedia.isPresent()) {
