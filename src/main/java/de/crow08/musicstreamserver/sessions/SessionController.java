@@ -70,6 +70,14 @@ public class SessionController {
     syncTimeoutScheduler.shutdownNow();
   }
 
+  /**
+   * Playback time since the given start. A resumed playback is planned {@value #SYNC_DELAY}ms in the future, so the
+   * start may not be reached yet: that counts as no playback instead of a negative one.
+   */
+  private static Duration elapsedSince(Instant mediaStarted, Instant now) {
+    return now.isBefore(mediaStarted) ? Duration.ZERO : Duration.between(mediaStarted, now);
+  }
+
   private static boolean isInSyncState(Session session) {
     Session.SessionState currentState = session.getSessionState();
     return currentState.equals(Session.SessionState.SYNC_PLAY) ||
@@ -129,7 +137,7 @@ public class SessionController {
   public Duration getMediaStartOffset(Session session) {
     Duration duration = Duration.ZERO;
     if (session.getMediaStarted() != null) {
-      duration = duration.plus(Duration.between(session.getMediaStarted(), Instant.now()));
+      duration = duration.plus(elapsedSince(session.getMediaStarted(), Instant.now()));
     }
     if (duration != null) {
       duration = duration.plus(session.getSavedProgression());
@@ -148,7 +156,7 @@ public class SessionController {
     // set saved progression to current progression
     Instant now = Instant.now();
     if (session.getMediaStarted() != null) {
-      session.setSavedProgression(session.getSavedProgression().plus(Duration.between(session.getMediaStarted(), now)));
+      session.setSavedProgression(session.getSavedProgression().plus(elapsedSince(session.getMediaStarted(), now)));
     }
     session.setMediaStarted(null);
     session.setSavedProgression(session.getSavedProgression().plus(offset, ChronoUnit.MILLIS));
@@ -253,7 +261,7 @@ public class SessionController {
   public Duration pause(Session session) {
     Instant now = Instant.now();
     if (session.getMediaStarted() != null) {
-      session.setSavedProgression(session.getSavedProgression().plus(Duration.between(session.getMediaStarted(), now)));
+      session.setSavedProgression(session.getSavedProgression().plus(elapsedSince(session.getMediaStarted(), now)));
     }
     session.setMediaStarted(null);
     session.setSessionState(Session.SessionState.PAUSE);
