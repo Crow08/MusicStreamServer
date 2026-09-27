@@ -55,6 +55,7 @@ public class PlayerControlsController {
   private static final long JOIN_DELAY = 3000L;
   /** Minimum playback time before an end report is accepted, see {@link #end}. */
   private static final long END_GRACE_PERIOD = 2000L;
+  private static final String QUEUE_CHANGED = "The queue has changed, please try again";
   private final SessionRepository sessionRepository;
   private final SessionController sessionController;
   private final UserRepository userRepository;
@@ -214,14 +215,23 @@ public class PlayerControlsController {
     return new UpdateQueueCommand(getMediaFromQueue(session));
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/movedMedia/{previousIndex}/to/{currentIndex}")
+  /**
+   * Moves media within the combined list of history, current media and queue (as displayed by the client).
+   * The indices refer to the client's view, which may be outdated: the moved media is identified by its id.
+   */
+  @MessageMapping("/sessions/{sessionId}/commands/movedMedia/{requestedPreviousIndex}/to/{currentIndex}/{mediaId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command movedMedia(@DestinationVariable long sessionId, @DestinationVariable int previousIndex, @DestinationVariable int currentIndex, String message) throws Exception {
+  public Command movedMedia(@DestinationVariable long sessionId, @DestinationVariable int requestedPreviousIndex,
+                            @DestinationVariable int currentIndex, @DestinationVariable long mediaId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
 
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     synchronized (session.getLock()) {
       Queue queue = session.getQueue();
+      int previousIndex = findInHistoryAndQueue(queue, requestedPreviousIndex, mediaId);
+      if (previousIndex < 0) {
+        throw new Exception(QUEUE_CHANGED);
+      }
 
       if (queue.getHistoryMedia().size() > previousIndex) {
         // Dragged Element is from history
@@ -321,24 +331,66 @@ public class PlayerControlsController {
     return new NopCommand();
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/deleteMediaFromQueue/{queueIndex}/{type}")
+  /**
+   * Deletes media from the queue or history. The index refers to the client's view, which may be outdated: the media
+   * is identified by its id.
+   */
+  @MessageMapping("/sessions/{sessionId}/commands/deleteMediaFromQueue/{queueIndex}/{type}/{mediaId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command deleteMediaFromQueue(@DestinationVariable long sessionId, @DestinationVariable int queueIndex, @DestinationVariable String type, String message) throws Exception {
+  public Command deleteMediaFromQueue(@DestinationVariable long sessionId, @DestinationVariable int queueIndex,
+                                      @DestinationVariable String type, @DestinationVariable long mediaId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + queueIndex + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    switch (type) {
-      case "queue" -> {
-        sessionController.deleteMediaFromQueue(session, queueIndex);
-        System.out.println("removed from queue");
-        return new UpdateQueueCommand(getMediaFromQueue(session));
-      }
-      case "history" -> {
-        sessionController.deleteMediaFromHistory(session, queueIndex);
-        System.out.println("removed from history");
-        return new UpdateHistoryCommand(getMediaFromHistory(session));
+    synchronized (session.getLock()) {
+      switch (type) {
+        case "queue" -> {
+          int index = findNearest(session.getQueue().getQueuedMedia(), queueIndex, mediaId);
+          if (index < 0) {
+            throw new Exception(QUEUE_CHANGED);
+          }
+          sessionController.deleteMediaFromQueue(session, index);
+          return new UpdateQueueCommand(getMediaFromQueue(session));
+        }
+        case "history" -> {
+          int index = findNearest(session.getQueue().getHistoryMedia(), queueIndex, mediaId);
+          if (index < 0) {
+            throw new Exception(QUEUE_CHANGED);
+          }
+          sessionController.deleteMediaFromHistory(session, index);
+          return new UpdateHistoryCommand(getMediaFromHistory(session));
+        }
+        default -> throw new Exception("Unknown list: " + type);
       }
     }
-    return new NopCommand();
+  }
+
+  /**
+   * Finds the media with the given id closest to the expected index (the same media can be queued multiple times).
+   *
+   * @return the index or -1 if the media is not in the list.
+   */
+  private static int findNearest(List<Media> list, int expectedIndex, long mediaId) {
+    int found = -1;
+    for (int i = 0; i < list.size(); i++) {
+      if (list.get(i).getId() == mediaId && (found < 0 || Math.abs(i - expectedIndex) < Math.abs(found - expectedIndex))) {
+        found = i;
+      }
+    }
+    return found;
+  }
+
+  /**
+   * Like {@link #findNearest} for the combined list of history, current media (not movable) and queue.
+   */
+  private static int findInHistoryAndQueue(Queue queue, int expectedIndex, long mediaId) {
+    int historySize = queue.getHistoryMedia().size();
+    int inHistory = findNearest(queue.getHistoryMedia(), expectedIndex, mediaId);
+    int inQueue = findNearest(queue.getQueuedMedia(), expectedIndex - historySize - 1, mediaId);
+    int queueIndex = inQueue < 0 ? -1 : inQueue + historySize + 1;
+    if (inHistory < 0 || queueIndex < 0) {
+      return Math.max(inHistory, queueIndex);
+    }
+    return Math.abs(inHistory - expectedIndex) <= Math.abs(queueIndex - expectedIndex) ? inHistory : queueIndex;
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/ready/{userId}/{mediaId}/{duration}")
