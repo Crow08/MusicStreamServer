@@ -119,7 +119,7 @@ public class SessionController {
    * @return the current media.
    */
   public Optional<Media> getCurrentMedia(Session session) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       if (session.getQueue().getCurrentMedia() == null) {
         this.nextMedia(session);
       }
@@ -135,14 +135,16 @@ public class SessionController {
    * @return the duration of the elapsed time of the current media.
    */
   public Duration getMediaStartOffset(Session session) {
-    Duration duration = Duration.ZERO;
-    if (session.getMediaStarted() != null) {
-      duration = duration.plus(elapsedSince(session.getMediaStarted(), Instant.now()));
+    synchronized (session.getLock()) {
+      Duration duration = Duration.ZERO;
+      if (session.getMediaStarted() != null) {
+        duration = duration.plus(elapsedSince(session.getMediaStarted(), Instant.now()));
+      }
+      if (duration != null) {
+        duration = duration.plus(session.getSavedProgression());
+      }
+      return duration;
     }
-    if (duration != null) {
-      duration = duration.plus(session.getSavedProgression());
-    }
-    return duration;
   }
 
   /**
@@ -153,14 +155,16 @@ public class SessionController {
    * @return new current media offset see {@link #getMediaStartOffset(Session)}
    */
   public Duration moveMediaStartOffset(Session session, long offset) {
-    // set saved progression to current progression
-    Instant now = Instant.now();
-    if (session.getMediaStarted() != null) {
-      session.setSavedProgression(session.getSavedProgression().plus(elapsedSince(session.getMediaStarted(), now)));
+    synchronized (session.getLock()) {
+      // set saved progression to current progression
+      Instant now = Instant.now();
+      if (session.getMediaStarted() != null) {
+        session.setSavedProgression(session.getSavedProgression().plus(elapsedSince(session.getMediaStarted(), now)));
+      }
+      session.setMediaStarted(null);
+      session.setSavedProgression(session.getSavedProgression().plus(offset, ChronoUnit.MILLIS));
+      return this.getMediaStartOffset(session);
     }
-    session.setMediaStarted(null);
-    session.setSavedProgression(session.getSavedProgression().plus(offset, ChronoUnit.MILLIS));
-    return this.getMediaStartOffset(session);
   }
 
   /**
@@ -170,7 +174,7 @@ public class SessionController {
    * @param session for with to move to the next media
    */
   public void nextMedia(Session session) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       Queue queue = session.getQueue();
       session.setMediaStarted(null);
       session.setSavedProgression(Duration.ZERO);
@@ -201,7 +205,7 @@ public class SessionController {
    * @param session for with to move to the next media
    */
   public void previousMedia(Session session) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       Queue queue = session.getQueue();
       session.setMediaStarted(null);
       session.setSavedProgression(Duration.ZERO);
@@ -231,7 +235,7 @@ public class SessionController {
    */
 
   public void addMedia(Session session, List<Media> media) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       session.getQueue().getQueuedMedia().addAll(media);
     }
   }
@@ -242,12 +246,14 @@ public class SessionController {
    * @param session for which the media starts playing.
    */
   public void start(Session session) {
-    session.setMediaStarted(null);
-    session.setSavedProgression(Duration.ZERO);
-    if (isInSyncState(session)) {
-      session.setSessionState(Session.SessionState.SYNC_PLAY);
-    } else {
-      session.setSessionState(Session.SessionState.PLAY);
+    synchronized (session.getLock()) {
+      session.setMediaStarted(null);
+      session.setSavedProgression(Duration.ZERO);
+      if (isInSyncState(session)) {
+        session.setSessionState(Session.SessionState.SYNC_PLAY);
+      } else {
+        session.setSessionState(Session.SessionState.PLAY);
+      }
     }
   }
 
@@ -259,13 +265,15 @@ public class SessionController {
    * @return the total accumulated time across all pauses and resumes this media has been played for.
    */
   public Duration pause(Session session) {
-    Instant now = Instant.now();
-    if (session.getMediaStarted() != null) {
-      session.setSavedProgression(session.getSavedProgression().plus(elapsedSince(session.getMediaStarted(), now)));
+    synchronized (session.getLock()) {
+      Instant now = Instant.now();
+      if (session.getMediaStarted() != null) {
+        session.setSavedProgression(session.getSavedProgression().plus(elapsedSince(session.getMediaStarted(), now)));
+      }
+      session.setMediaStarted(null);
+      session.setSessionState(Session.SessionState.PAUSE);
+      return this.getMediaStartOffset(session);
     }
-    session.setMediaStarted(null);
-    session.setSessionState(Session.SessionState.PAUSE);
-    return this.getMediaStartOffset(session);
   }
 
   /**
@@ -276,14 +284,16 @@ public class SessionController {
    * @return server time of the media start.
    */
   public Instant resume(Session session) {
-    if (isInSyncState(session)) {
-      session.setSessionState(Session.SessionState.SYNC_PLAY);
-      return null;
-    } else {
-      Instant now = Instant.now();
-      session.setMediaStarted(now.plus(SYNC_DELAY, ChronoUnit.MILLIS));
-      session.setSessionState(Session.SessionState.PLAY);
-      return session.getMediaStarted();
+    synchronized (session.getLock()) {
+      if (isInSyncState(session)) {
+        session.setSessionState(Session.SessionState.SYNC_PLAY);
+        return null;
+      } else {
+        Instant now = Instant.now();
+        session.setMediaStarted(now.plus(SYNC_DELAY, ChronoUnit.MILLIS));
+        session.setSessionState(Session.SessionState.PLAY);
+        return session.getMediaStarted();
+      }
     }
   }
 
@@ -293,9 +303,11 @@ public class SessionController {
    * @param session for which the media is being stopped.
    */
   public void stop(Session session) {
-    session.setSavedProgression(Duration.ZERO);
-    session.setMediaStarted(null);
-    session.setSessionState(Session.SessionState.STOP);
+    synchronized (session.getLock()) {
+      session.setSavedProgression(Duration.ZERO);
+      session.setMediaStarted(null);
+      session.setSessionState(Session.SessionState.STOP);
+    }
   }
 
   /**
@@ -304,7 +316,7 @@ public class SessionController {
    * @param session for which the queue is shuffled for.
    */
   public void shuffleQueue(Session session) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       Collections.shuffle(session.getQueue().getQueuedMedia());
     }
   }
@@ -316,7 +328,7 @@ public class SessionController {
    * @param queueIndex to delete.
    */
   public void deleteMediaFromQueue(Session session, int queueIndex) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       session.getQueue().getQueuedMedia().remove(queueIndex);
     }
   }
@@ -328,7 +340,7 @@ public class SessionController {
    * @param historyIndex to delete.
    */
   public void deleteMediaFromHistory(Session session, int historyIndex) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       session.getQueue().getHistoryMedia().remove(historyIndex);
     }
   }
@@ -341,7 +353,7 @@ public class SessionController {
 
   public void addUserToSession(User newUser, Session session) {
     // check and add atomically: joins of different users can be handled at the same time
-    synchronized (session.getUsers()) {
+    synchronized (session.getLock()) {
       if (session.getUsers().stream().noneMatch(user -> user.getId() == newUser.getId())) {
         session.getUsers().add(newUser);
         sessionRepository.save(session);
@@ -353,7 +365,7 @@ public class SessionController {
     session.getUsers().remove(oldUser);
     sessionRepository.save(session);
     // the removed user might have been the last one the current sync round was waiting for
-    synchronized (session) {
+    synchronized (session.getLock()) {
       if (isInSyncState(session) && session.getSessionUserSynchronization().allReady(getUserIds(session))) {
         sendToSession(session, finishSync(session));
       }
@@ -372,7 +384,7 @@ public class SessionController {
    * empty otherwise.
    */
   public Optional<Command> userIsReady(User user, Session session, long mediaId) {
-    synchronized (session) {
+    synchronized (session.getLock()) {
       SessionUserSynchronization sync = session.getSessionUserSynchronization();
       if (!isInSyncState(session) || !sync.addReadyUser(user.getId(), mediaId)) {
         return Optional.empty();
@@ -393,7 +405,7 @@ public class SessionController {
    * @param session the session to synchronize.
    */
   public void enterSyncState(Session session) {
-    synchronized (session) {
+    synchronized (session.getLock()) {
       Media currentMedia = session.getQueue().getCurrentMedia();
       if (currentMedia == null) {
         return;
@@ -419,7 +431,7 @@ public class SessionController {
   }
 
   private void onSyncTimeout(Session session, long round) {
-    synchronized (session) {
+    synchronized (session.getLock()) {
       SessionUserSynchronization sync = session.getSessionUserSynchronization();
       if (!sync.isCurrentRound(round)) {
         return;
@@ -435,7 +447,8 @@ public class SessionController {
   }
 
   /**
-   * Finishes the current sync round and leaves the sync state. Must be called while holding the session lock.
+   * Finishes the current sync round and leaves the sync state. Must be called while holding the session lock
+   * ({@link Session#getLock()}).
    *
    * @return a {@link StartCommand} if playback is pending, null otherwise.
    */

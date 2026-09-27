@@ -84,8 +84,10 @@ public class PlayerControlsController {
   public Command start(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    sessionController.start(session);
-    return setMedia(session);
+    synchronized (session.getLock()) {
+      sessionController.start(session);
+      return setMedia(session);
+    }
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/jump/{offset}")
@@ -93,9 +95,11 @@ public class PlayerControlsController {
   public Command jump(@DestinationVariable long sessionId, @DestinationVariable long offset, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    Duration startOffsetDuration = sessionController.moveMediaStartOffset(session, offset);
-    sessionController.enterSyncState(session);
-    return new JumpCommand(startOffsetDuration.toMillis());
+    synchronized (session.getLock()) {
+      Duration startOffsetDuration = sessionController.moveMediaStartOffset(session, offset);
+      sessionController.enterSyncState(session);
+      return new JumpCommand(startOffsetDuration.toMillis());
+    }
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/skip")
@@ -103,8 +107,10 @@ public class PlayerControlsController {
   public Command skip(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    sessionController.nextMedia(session);
-    return setMedia(session);
+    synchronized (session.getLock()) {
+      sessionController.nextMedia(session);
+      return setMedia(session);
+    }
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/previous")
@@ -112,8 +118,10 @@ public class PlayerControlsController {
   public Command previous(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    sessionController.previousMedia(session);
-    return setMedia(session);
+    synchronized (session.getLock()) {
+      sessionController.previousMedia(session);
+      return setMedia(session);
+    }
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/pause")
@@ -153,26 +161,25 @@ public class PlayerControlsController {
                       @Header(SimpMessageHeaderAccessor.SESSION_ID_HEADER) String wsSessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    // read without side effects: sessionController.getCurrentMedia() would move the first queued media into place
-    Media currentMedia;
-    synchronized (session.getQueue()) {
-      currentMedia = session.getQueue().getCurrentMedia();
-    }
-    MinimalMedia minMedia = null;
-    if (currentMedia != null) {
-      minMedia = new MinimalMedia(currentMedia.getId(), currentMedia.getTitle(), currentMedia.getType());
-    }
-    long startTime = Instant.now().plus(JOIN_DELAY, ChronoUnit.MILLIS).toEpochMilli();
-    long startOffset = session.getSessionState().equals(Session.SessionState.PLAY) ?
-        sessionController.getMediaStartOffset(session).plus(JOIN_DELAY, ChronoUnit.MILLIS).toMillis() :
-        sessionController.getMediaStartOffset(session).toMillis();
-    Optional<User> connectedUser = getConnectedUser(principal, userId);
-    if (connectedUser.isPresent()) {
-      webSocketSessionController.joinMusicSession(wsSessionId, sessionId);
-      sessionController.addUserToSession(connectedUser.get(), session);
-      System.out.println("start offset:" + startOffset);
-      return new JoinCommand(userId, minMedia, getMediaFromQueue(session), getMediaFromHistory(session),
-          session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
+    synchronized (session.getLock()) {
+      // read without side effects: sessionController.getCurrentMedia() would move the first queued media into place
+      Media currentMedia = session.getQueue().getCurrentMedia();
+      MinimalMedia minMedia = null;
+      if (currentMedia != null) {
+        minMedia = new MinimalMedia(currentMedia.getId(), currentMedia.getTitle(), currentMedia.getType());
+      }
+      long startTime = Instant.now().plus(JOIN_DELAY, ChronoUnit.MILLIS).toEpochMilli();
+      long startOffset = session.getSessionState().equals(Session.SessionState.PLAY) ?
+          sessionController.getMediaStartOffset(session).plus(JOIN_DELAY, ChronoUnit.MILLIS).toMillis() :
+          sessionController.getMediaStartOffset(session).toMillis();
+      Optional<User> connectedUser = getConnectedUser(principal, userId);
+      if (connectedUser.isPresent()) {
+        webSocketSessionController.joinMusicSession(wsSessionId, sessionId);
+        sessionController.addUserToSession(connectedUser.get(), session);
+        System.out.println("start offset:" + startOffset);
+        return new JoinCommand(userId, minMedia, getMediaFromQueue(session), getMediaFromHistory(session),
+            session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
+      }
     }
     return new NopCommand();
   }
@@ -213,7 +220,7 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
 
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       Queue queue = session.getQueue();
 
       if (queue.getHistoryMedia().size() > previousIndex) {
@@ -252,7 +259,7 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
 
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       Queue queue = session.getQueue();
       Media currentMedia;
       if (queue.getQueuedMedia().stream().anyMatch(media -> media.getId() == mediaId)) {
@@ -289,8 +296,10 @@ public class PlayerControlsController {
   public Command loop(@DestinationVariable long sessionId, @DestinationVariable boolean loopMode, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    session.setLoopMode(loopMode);
-    return new UpdateLoopModeCommand(session.isLoopMode());
+    synchronized (session.getLock()) {
+      session.setLoopMode(loopMode);
+      return new UpdateLoopModeCommand(session.isLoopMode());
+    }
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/end/{mediaId}")
@@ -298,7 +307,7 @@ public class PlayerControlsController {
   public Command end(@DestinationVariable long sessionId, @DestinationVariable long mediaId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       Media currentMedia = session.getQueue().getCurrentMedia();
       // every client reports the end: only the first report for a playback that actually ran is accepted, so a slow
       // client can not skip the next media, even if it is the same media again (e.g. loop mode with one media)
@@ -351,7 +360,7 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Media media = findMedia(objectMapper.readTree(message)).orElseThrow(() -> new Exception("Media not found"));
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       session.getQueue().getQueuedMedia().add(media);
     }
     return new UpdateQueueCommand(getMediaFromQueue(session));
@@ -369,7 +378,7 @@ public class PlayerControlsController {
     if (media.isEmpty()) {
       throw new Exception("Media not found");
     }
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       session.getQueue().getQueuedMedia().addAll(media);
     }
     return new UpdateQueueCommand(getMediaFromQueue(session));
@@ -381,7 +390,7 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Media media = findMedia(objectMapper.readTree(message)).orElseThrow(() -> new Exception("Media not found"));
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       session.getQueue().getQueuedMedia().add(0, media);
     }
     return new UpdateQueueCommand(getMediaFromQueue(session));
@@ -417,7 +426,7 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Media media = findMedia(objectMapper.readTree(message)).orElseThrow(() -> new Exception("Media not found"));
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       session.getQueue().getQueuedMedia().add(0, media);
       sessionController.nextMedia(session);
     }
@@ -440,17 +449,19 @@ public class PlayerControlsController {
   }
 
   private Command setMedia(Session session) {
-    Optional<Media> currentMedia = sessionController.getCurrentMedia(session);
-    if (currentMedia.isPresent()) {
-      MinimalMedia minimalMedia = new MinimalMedia(currentMedia.get().getId(), currentMedia.get().getTitle(), currentMedia.get().getType());
-      sessionController.enterSyncState(session);
-      return new SetMediaCommand(minimalMedia);
+    synchronized (session.getLock()) {
+      Optional<Media> currentMedia = sessionController.getCurrentMedia(session);
+      if (currentMedia.isPresent()) {
+        MinimalMedia minimalMedia = new MinimalMedia(currentMedia.get().getId(), currentMedia.get().getTitle(), currentMedia.get().getType());
+        sessionController.enterSyncState(session);
+        return new SetMediaCommand(minimalMedia);
+      }
+      return new StopCommand();
     }
-    return new StopCommand();
   }
 
   private List<MinimalMedia> getMediaFromQueue(Session session) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       return session.getQueue().getQueuedMedia().stream()
           .map(media -> new MinimalMedia(media.getId(), media.getTitle(), media.getType()))
           .collect(Collectors.toList());
@@ -458,7 +469,7 @@ public class PlayerControlsController {
   }
 
   private List<MinimalMedia> getMediaFromHistory(Session session) {
-    synchronized (session.getQueue()) {
+    synchronized (session.getLock()) {
       return session.getQueue().getHistoryMedia().stream()
           .map(media -> new MinimalMedia(media.getId(), media.getTitle(), media.getType()))
           .collect(Collectors.toList());

@@ -1,5 +1,6 @@
 package de.crow08.musicstreamserver.sessions;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import de.crow08.musicstreamserver.model.playlists.Playlist;
 import de.crow08.musicstreamserver.model.queue.Queue;
 import de.crow08.musicstreamserver.model.users.User;
@@ -11,6 +12,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Session {
 
+  /**
+   * Guards all state of this session (playback state, timing, queue, users). Commands of a session are handled
+   * concurrently by the WebSocket message handlers.
+   */
+  private final Object lock = new Object();
   private final SessionUserSynchronization sessionUserSynchronization = new SessionUserSynchronization();
   private long id;
   private List<User> users;
@@ -34,6 +40,11 @@ public class Session {
   public Session(String name, Playlist playlist) {
     this(name);
     this.queue = new Queue(playlist);
+  }
+
+  @JsonIgnore
+  public Object getLock() {
+    return lock;
   }
 
   public long getId() {
