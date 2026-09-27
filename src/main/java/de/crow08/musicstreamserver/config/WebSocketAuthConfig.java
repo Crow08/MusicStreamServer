@@ -1,5 +1,6 @@
 package de.crow08.musicstreamserver.config;
 
+import de.crow08.musicstreamserver.sessions.SessionRepository;
 import de.crow08.musicstreamserver.wscommunication.WebSocketSessionController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -21,15 +22,19 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketAuthConfig implements WebSocketMessageBrokerConfigurer {
 
   private final WebSocketSessionController webSocketSessionController;
+  private final SessionRepository sessionRepository;
 
   @Autowired
-  public WebSocketAuthConfig(final WebSocketSessionController webSocketSessionController) {
+  public WebSocketAuthConfig(final WebSocketSessionController webSocketSessionController,
+                             final SessionRepository sessionRepository) {
     this.webSocketSessionController = webSocketSessionController;
+    this.sessionRepository = sessionRepository;
   }
 
   @Override
   public void configureClientInboundChannel(final ChannelRegistration registration) {
-    registration.interceptors(new WebSocketAuthInterceptor(this.webSocketSessionController));
+    registration.interceptors(new WebSocketAuthInterceptor(this.webSocketSessionController),
+        new SessionMembershipInterceptor(this.sessionRepository));
   }
 
   static class WebSocketAuthInterceptor implements ChannelInterceptor {

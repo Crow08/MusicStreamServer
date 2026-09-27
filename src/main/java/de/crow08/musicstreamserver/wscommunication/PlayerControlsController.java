@@ -37,6 +37,7 @@ import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.stereotype.Controller;
 
+import java.security.Principal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -143,7 +144,7 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/join/{userId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command join(@DestinationVariable long sessionId, @DestinationVariable long userId,
+  public Command join(@DestinationVariable long sessionId, @DestinationVariable long userId, Principal principal,
                       @Header(SimpMessageHeaderAccessor.SESSION_ID_HEADER) String wsSessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
@@ -160,7 +161,7 @@ public class PlayerControlsController {
     long startOffset = session.getSessionState().equals(Session.SessionState.PLAY) ?
         sessionController.getMediaStartOffset(session).plus(JOIN_DELAY, ChronoUnit.MILLIS).toMillis() :
         sessionController.getMediaStartOffset(session).toMillis();
-    Optional<User> connectedUser = this.userRepository.findById(userId);
+    Optional<User> connectedUser = getConnectedUser(principal, userId);
     if (connectedUser.isPresent()) {
       webSocketSessionController.joinMusicSession(wsSessionId, sessionId);
       sessionController.addUserToSession(connectedUser.get(), session);
@@ -173,10 +174,13 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/leave/{userId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command leave(@DestinationVariable long sessionId, @DestinationVariable long userId,
+  public Command leave(@DestinationVariable long sessionId, @DestinationVariable long userId, Principal principal,
                        @Header(SimpMessageHeaderAccessor.SESSION_ID_HEADER) String wsSessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    if (getConnectedUser(principal, userId).isEmpty()) {
+      return new NopCommand();
+    }
     // the user stays in the session as long as another connection (e.g. browser tab) of it is still in there
     if (!webSocketSessionController.leaveMusicSession(wsSessionId, userId, sessionId)) {
       return new NopCommand();
@@ -320,9 +324,9 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/ready/{userId}/{mediaId}/{duration}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command ready(@DestinationVariable long sessionId, @DestinationVariable long userId, @DestinationVariable long mediaId, @DestinationVariable long duration, String message) throws Exception {
+  public Command ready(@DestinationVariable long sessionId, @DestinationVariable long userId, @DestinationVariable long mediaId, @DestinationVariable long duration, Principal principal, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
-    Optional<User> connectedUser = this.userRepository.findById(userId);
+    Optional<User> connectedUser = getConnectedUser(principal, userId);
     Optional<Session> session = sessionRepository.findById(sessionId);
     if (connectedUser.isPresent() && session.isPresent()) {
       // duration is not compared: browsers snap the media position differently, the server offset is authoritative
@@ -368,6 +372,19 @@ public class PlayerControlsController {
       media.ifPresent(m -> session.getQueue().getQueuedMedia().add(0, m));
     }
     return new UpdateQueueCommand(getMediaFromQueue(session));
+  }
+
+  /**
+   * Resolves the user of the WebSocket connection. The user id in the destination is only accepted if it matches, so a
+   * client can not act on behalf of another user.
+   */
+  private Optional<User> getConnectedUser(Principal principal, long userId) {
+    User user = principal != null ? userRepository.findByUsername(principal.getName()) : null;
+    if (user == null || user.getId() != userId) {
+      System.out.println("Rejected command for user " + userId + " from " + (principal != null ? principal.getName() : null));
+      return Optional.empty();
+    }
+    return Optional.of(user);
   }
 
   /**
