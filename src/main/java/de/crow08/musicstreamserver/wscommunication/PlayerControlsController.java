@@ -50,6 +50,8 @@ import java.util.stream.Collectors;
 public class PlayerControlsController {
 
   private static final long JOIN_DELAY = 3000L;
+  /** Minimum playback time before an end report is accepted, see {@link #end}. */
+  private static final long END_GRACE_PERIOD = 2000L;
   private final SessionRepository sessionRepository;
   private final SessionController sessionController;
   private final UserRepository userRepository;
@@ -294,7 +296,12 @@ public class PlayerControlsController {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     synchronized (session.getQueue()) {
-      if (session.getQueue().getCurrentMedia().getId() == mediaId) {
+      Media currentMedia = session.getQueue().getCurrentMedia();
+      // every client reports the end: only the first report for a playback that actually ran is accepted, so a slow
+      // client can not skip the next media, even if it is the same media again (e.g. loop mode with one media)
+      boolean playedLongEnough = session.getSessionState().equals(Session.SessionState.PLAY) &&
+          sessionController.getMediaStartOffset(session).toMillis() >= END_GRACE_PERIOD;
+      if (currentMedia != null && currentMedia.getId() == mediaId && playedLongEnough) {
         sessionController.nextMedia(session);
         return setMedia(session);
       }
