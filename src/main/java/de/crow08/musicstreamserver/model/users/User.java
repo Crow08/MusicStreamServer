@@ -1,5 +1,7 @@
 package de.crow08.musicstreamserver.model.users;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -16,6 +18,8 @@ public class User {
   @Column(nullable = false, unique = true)
   private String username;
 
+  // write only: accepted on registration, but never included in any response
+  @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
   @Column(nullable = false)
   private String password;
 
