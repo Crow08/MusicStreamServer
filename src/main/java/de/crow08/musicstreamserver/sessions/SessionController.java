@@ -331,9 +331,12 @@ public class SessionController {
   }
 
   public void addUserToSession(User newUser, Session session) {
-    if (session.getUsers().stream().noneMatch(user -> user.getId() == newUser.getId())) {
-      session.getUsers().add(newUser);
-      sessionRepository.save(session);
+    // check and add atomically: joins of different users can be handled at the same time
+    synchronized (session.getUsers()) {
+      if (session.getUsers().stream().noneMatch(user -> user.getId() == newUser.getId())) {
+        session.getUsers().add(newUser);
+        sessionRepository.save(session);
+      }
     }
   }
 

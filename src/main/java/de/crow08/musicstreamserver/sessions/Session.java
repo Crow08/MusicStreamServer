@@ -6,8 +6,8 @@ import de.crow08.musicstreamserver.model.users.User;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Session {
 
@@ -26,7 +26,8 @@ public class Session {
   }
 
   public Session(String name) {
-    this.users = new ArrayList<>();
+    // read and modified by concurrently handled WebSocket messages
+    this.users = new CopyOnWriteArrayList<>();
     this.name = name;
   }
 
