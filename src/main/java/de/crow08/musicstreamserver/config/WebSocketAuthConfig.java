@@ -2,12 +2,14 @@ package de.crow08.musicstreamserver.config;
 
 import de.crow08.musicstreamserver.sessions.SessionRepository;
 import de.crow08.musicstreamserver.wscommunication.WebSocketSessionController;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -23,18 +25,21 @@ public class WebSocketAuthConfig implements WebSocketMessageBrokerConfigurer {
 
   private final WebSocketSessionController webSocketSessionController;
   private final SessionRepository sessionRepository;
+  private final ObjectProvider<SimpMessageSendingOperations> messagingTemplate;
 
   @Autowired
   public WebSocketAuthConfig(final WebSocketSessionController webSocketSessionController,
-                             final SessionRepository sessionRepository) {
+                             final SessionRepository sessionRepository,
+                             final ObjectProvider<SimpMessageSendingOperations> messagingTemplate) {
     this.webSocketSessionController = webSocketSessionController;
     this.sessionRepository = sessionRepository;
+    this.messagingTemplate = messagingTemplate;
   }
 
   @Override
   public void configureClientInboundChannel(final ChannelRegistration registration) {
     registration.interceptors(new WebSocketAuthInterceptor(this.webSocketSessionController),
-        new SessionMembershipInterceptor(this.sessionRepository));
+        new SessionMembershipInterceptor(this.sessionRepository, this.messagingTemplate));
   }
 
   static class WebSocketAuthInterceptor implements ChannelInterceptor {

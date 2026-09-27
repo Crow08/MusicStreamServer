@@ -2,8 +2,11 @@ package de.crow08.musicstreamserver.config;
 
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
+import de.crow08.musicstreamserver.wscommunication.commands.ErrorCommand;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -22,9 +25,13 @@ public class SessionMembershipInterceptor implements ChannelInterceptor {
   private static final Pattern SESSION_COMMAND = Pattern.compile("^/app/sessions/(\\d+)/commands/([^/]+)");
 
   private final SessionRepository sessionRepository;
+  // provided lazily: the messaging template is created by the broker configuration this interceptor is part of
+  private final ObjectProvider<SimpMessageSendingOperations> messagingTemplate;
 
-  public SessionMembershipInterceptor(SessionRepository sessionRepository) {
+  public SessionMembershipInterceptor(SessionRepository sessionRepository,
+                                      ObjectProvider<SimpMessageSendingOperations> messagingTemplate) {
     this.sessionRepository = sessionRepository;
+    this.messagingTemplate = messagingTemplate;
   }
 
   @Override
@@ -44,6 +51,11 @@ public class SessionMembershipInterceptor implements ChannelInterceptor {
     if (!member) {
       System.out.println("Dropped command from non-member " + (user != null ? user.getName() : null) + ": " +
           accessor.getDestination());
+      if (user != null) {
+        String reason = session.isPresent() ? "You are not a member of this session" : "Session not found";
+        messagingTemplate.getObject().convertAndSendToUser(user.getName(), "/queue/errors",
+            new ErrorCommand(reason, accessor.getDestination()));
+      }
       // returning null drops the message
       return null;
     }

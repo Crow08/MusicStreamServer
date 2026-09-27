@@ -12,6 +12,7 @@ import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
+import de.crow08.musicstreamserver.wscommunication.commands.ErrorCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.JumpCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.LeaveCommand;
@@ -29,12 +30,14 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
@@ -347,9 +350,9 @@ public class PlayerControlsController {
   public Command addMediaToPlaylist(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    Optional<Media> media = findMedia(objectMapper.readTree(message));
+    Media media = findMedia(objectMapper.readTree(message)).orElseThrow(() -> new Exception("Media not found"));
     synchronized (session.getQueue()) {
-      media.ifPresent(m -> session.getQueue().getQueuedMedia().add(m));
+      session.getQueue().getQueuedMedia().add(media);
     }
     return new UpdateQueueCommand(getMediaFromQueue(session));
   }
@@ -363,6 +366,9 @@ public class PlayerControlsController {
     for (JsonNode node : objectMapper.readTree(message)) {
       findMedia(node).ifPresent(media::add);
     }
+    if (media.isEmpty()) {
+      throw new Exception("Media not found");
+    }
     synchronized (session.getQueue()) {
       session.getQueue().getQueuedMedia().addAll(media);
     }
@@ -374,9 +380,9 @@ public class PlayerControlsController {
   public Command playMediaNext(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
-    Optional<Media> media = findMedia(objectMapper.readTree(message));
+    Media media = findMedia(objectMapper.readTree(message)).orElseThrow(() -> new Exception("Media not found"));
     synchronized (session.getQueue()) {
-      media.ifPresent(m -> session.getQueue().getQueuedMedia().add(0, m));
+      session.getQueue().getQueuedMedia().add(0, media);
     }
     return new UpdateQueueCommand(getMediaFromQueue(session));
   }
@@ -419,6 +425,18 @@ public class PlayerControlsController {
     this.messagingTemplate.convertAndSend("/topic/sessions/" + sessionId,
         new UpdateQueueAndHistoryCommand(getMediaFromQueue(session), getMediaFromHistory(session)), createHeaders(msg));
     return setMedia(session);
+  }
+
+  /**
+   * Reports a failed command only to the connection that sent it, instead of failing silently.
+   */
+  @MessageExceptionHandler
+  @SendToUser(destinations = "/queue/errors", broadcast = false)
+  public Command handleException(Exception exception,
+                                 @Header(SimpMessageHeaderAccessor.DESTINATION_HEADER) String destination) {
+    String reason = exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName();
+    System.out.println("Command failed: " + destination + " - " + reason);
+    return new ErrorCommand(reason, destination);
   }
 
   private Command setMedia(Session session) {
