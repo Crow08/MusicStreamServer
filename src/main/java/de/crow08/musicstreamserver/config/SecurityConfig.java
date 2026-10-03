@@ -2,6 +2,7 @@ package de.crow08.musicstreamserver.config;
 
 import de.crow08.musicstreamserver.model.media.Media;
 import de.crow08.musicstreamserver.model.media.MediaRepository;
+import de.crow08.musicstreamserver.model.media.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +26,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 @EnableWebSecurity
 public class SecurityConfig implements WebMvcConfigurer {
@@ -74,47 +76,73 @@ public class SecurityConfig implements WebMvcConfigurer {
 
   @Override
   public void addResourceHandlers(final ResourceHandlerRegistry registry) {
+    addMediaResourceHandler(registry, "/api/v1/media/data/**", media -> Optional.of(media.getUri()));
+    // Thumbnail sprite for the seek bar preview, written next to the video by convert-video.ps1
+    addMediaResourceHandler(registry, "/api/v1/media/thumbnails/**", media -> media.getType() == MediaType.VIDEO
+        ? Optional.of(media.getUri().replaceFirst("\\.[^./\\\\]*$", "") + ".thumbs.jpg")
+        : Optional.empty());
+  }
+
+  /**
+   * Serves a file belonging to the media whose id is the first path segment after the pattern. The file is resolved
+   * against the classpath and the client storage path; a missing media or file results in 404.
+   */
+  private void addMediaResourceHandler(ResourceHandlerRegistry registry, String pathPattern,
+                                       Function<Media, Optional<String>> fileOfMedia) {
     registry
-        .addResourceHandler("/api/v1/media/data/**")
+        .addResourceHandler(pathPattern)
         .addResourceLocations("classpath:/","file:///"+clientStoragePath)
         .setCachePeriod(3600)
         .resourceChain(true)
-        .addResolver(new ResourceResolver() {
-          @Override
-          public Resource resolveResource(HttpServletRequest request, String requestPath, List<? extends Resource> locations, ResourceResolverChain chain) {
-            try {
-              return getResource(requestPath, locations);
-            } catch (IOException e) {
-              return null;
-            }
-          }
+        .addResolver(new MediaResourceResolver(fileOfMedia));
+  }
 
-          @Override
-          public String resolveUrlPath(String resourcePath, List<? extends Resource> locations, ResourceResolverChain chain) {
-            try {
-              return getResource(resourcePath, locations) != null ? resourcePath : null;
-            } catch (IOException e) {
-              return null;
-            }
-          }
+  private class MediaResourceResolver implements ResourceResolver {
+    private final Function<Media, Optional<String>> fileOfMedia;
 
-          private Resource getResource(String requestPath, List<? extends Resource> locations) throws IOException {
-            String trimmedPath = requestPath;
-            trimmedPath = trimmedPath.contains("?") ? trimmedPath.substring(0, trimmedPath.indexOf("?")) : trimmedPath;
-            trimmedPath = trimmedPath.contains("/") ? trimmedPath.substring(0, trimmedPath.indexOf("/")) : trimmedPath;
+    MediaResourceResolver(Function<Media, Optional<String>> fileOfMedia) {
+      this.fileOfMedia = fileOfMedia;
+    }
 
-            Optional<Media> song = mediaRepository.findById(Long.parseLong(trimmedPath));
-            if (song.isPresent()) {
-              for (Resource location : locations) {
-                Resource resource = location.createRelative(song.get().getUri());
-                if (resource.isReadable()) {
-                  return resource;
-                }
-              }
-            }
-            return null;
+    @Override
+    public Resource resolveResource(HttpServletRequest request, String requestPath, List<? extends Resource> locations, ResourceResolverChain chain) {
+      try {
+        return getResource(requestPath, locations);
+      } catch (IOException e) {
+        return null;
+      }
+    }
+
+    @Override
+    public String resolveUrlPath(String resourcePath, List<? extends Resource> locations, ResourceResolverChain chain) {
+      try {
+        return getResource(resourcePath, locations) != null ? resourcePath : null;
+      } catch (IOException e) {
+        return null;
+      }
+    }
+
+    private Resource getResource(String requestPath, List<? extends Resource> locations) throws IOException {
+      String trimmedPath = requestPath;
+      trimmedPath = trimmedPath.contains("?") ? trimmedPath.substring(0, trimmedPath.indexOf("?")) : trimmedPath;
+      trimmedPath = trimmedPath.contains("/") ? trimmedPath.substring(0, trimmedPath.indexOf("/")) : trimmedPath;
+
+      Optional<String> file;
+      try {
+        file = mediaRepository.findById(Long.parseLong(trimmedPath)).flatMap(fileOfMedia);
+      } catch (NumberFormatException e) {
+        return null;
+      }
+      if (file.isPresent()) {
+        for (Resource location : locations) {
+          Resource resource = location.createRelative(file.get());
+          if (resource.isReadable()) {
+            return resource;
           }
-        });
+        }
+      }
+      return null;
+    }
   }
 
 }
