@@ -11,6 +11,10 @@
   bitmap subtitles (PGS/VobSub/DVB) are overlaid. If a file has several subtitle or audio tracks and
   none is selected via parameters, the script asks which one to use.
 
+  A thumbnail sprite for the seek bar preview is written next to the output (<name>.thumbs.jpg): one
+  160x90 frame every 2 s, 10 per row, taken before the subtitles are burned in. -ThumbnailsOnly creates
+  only the sprite for existing videos.
+
   Requires ffmpeg and ffprobe on the PATH (e.g. winget install Gyan.FFmpeg).
 
 .EXAMPLE
@@ -25,6 +29,10 @@
 .EXAMPLE
   # Encode only one minute starting at 5:00 to check quality and subtitle timing
   .\convert-video.ps1 episode.mkv -Output preview.mp4 -Start 300 -Duration 60
+
+.EXAMPLE
+  # Thumbnail sprites for already converted videos
+  .\convert-video.ps1 -ThumbnailsOnly F:\media\videos\v*.mp4
 #>
 [CmdletBinding()]
 param(
@@ -55,6 +63,10 @@ param(
   [double] $Start = 0,
   [double] $Duration = 0,
   [switch] $ListStreams,
+  # Do not create the thumbnail sprite.
+  [switch] $NoThumbnails,
+  # Only create the thumbnail sprite (<input name>.thumbs.jpg) for an existing video, no conversion.
+  [switch] $ThumbnailsOnly,
   [switch] $Force
 )
 
@@ -69,10 +81,11 @@ foreach ($tool in 'ffmpeg', 'ffprobe') {
 $bitmapSubtitleCodecs = 'hdmv_pgs_subtitle', 'dvd_subtitle', 'dvb_subtitle', 'xsub'
 $browserAudioCodecs = 'aac'
 
-function Get-Streams([string] $file) {
-  $json = & ffprobe -v error -show_streams -of json -- $file | Out-String
+function Get-Probe([string] $file) {
+  $json = & ffprobe -v error -show_streams -show_format -of json -- $file | Out-String
   if ($LASTEXITCODE -ne 0) { throw "ffprobe failed for '$file'" }
-  $streams = (ConvertFrom-Json $json).streams
+  $probe = ConvertFrom-Json $json
+  $streams = $probe.streams
   foreach ($type in 'video', 'audio', 'subtitle') {
     $n = 0
     foreach ($s in @($streams | Where-Object { $_.codec_type -eq $type })) {
@@ -80,7 +93,10 @@ function Get-Streams([string] $file) {
       $n++
     }
   }
-  return $streams
+  return [pscustomobject]@{
+    streams  = $streams
+    duration = [double]::Parse($probe.format.duration, [Globalization.CultureInfo]::InvariantCulture)
+  }
 }
 
 function Get-Tag($stream, [string] $name) {
@@ -153,6 +169,69 @@ function ConvertTo-FilterValue([string] $value) {
   return ($level1 -replace '([\\\[\],;''])', '\$1')
 }
 
+# Thumbnail sprite for the seek bar preview. The client (player-track.component.ts) uses the same constants:
+# tile n shows the time n * interval, at column n % columns and row floor(n / columns).
+$thumbnailInterval = 2
+$thumbnailWidth = 160
+$thumbnailHeight = 90
+$thumbnailColumns = 10
+# Maximum JPEG height
+$maxSpriteHeight = 65500
+
+function Get-SpritePath([string] $mediaFile) {
+  return Join-Path (Split-Path $mediaFile -Parent) ([IO.Path]::GetFileNameWithoutExtension($mediaFile) + '.thumbs.jpg')
+}
+
+# Filter chain that turns the video into a single sprite image, or $null if the video is too long for one image
+function Get-ThumbnailFilter([double] $seconds) {
+  $tiles = [math]::Floor($seconds / $thumbnailInterval) + 1
+  $rows = [math]::Ceiling($tiles / $thumbnailColumns)
+  if ($rows * $thumbnailHeight -gt $maxSpriteHeight) {
+    Write-Warning "Video too long for a single thumbnail sprite ($rows rows), no thumbnails generated."
+    return $null
+  }
+  $w = $thumbnailWidth
+  $h = $thumbnailHeight
+  return "fps=1/$thumbnailInterval,scale=${w}:${h}:force_original_aspect_ratio=decrease," +
+    "pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2,setsar=1,tile=${thumbnailColumns}x$rows"
+}
+
+function Get-SpriteOutputArgs([string] $sprite) {
+  return @('-map', '[t]', '-frames:v', '1', '-q:v', '5', '-update', '1', $sprite)
+}
+
+# Runs ffmpeg; ffmpeg writes progress to stderr, which Windows PowerShell must not treat as an error
+function Invoke-Ffmpeg([string[]] $ffArgs, [string[]] $outputs) {
+  $ErrorActionPreference = 'Continue'
+  & ffmpeg @ffArgs
+  $exitCode = $LASTEXITCODE
+  $ErrorActionPreference = 'Stop'
+  if ($exitCode -ne 0) {
+    foreach ($o in $outputs) { Remove-Item -LiteralPath $o -ErrorAction SilentlyContinue }
+    throw "ffmpeg failed (exit code $exitCode)."
+  }
+}
+
+function Resolve-OutputPath([string] $in, [string] $extension) {
+  if ($Output) {
+    $out = $Output
+  } else {
+    $dir = if ($OutputDir) { $OutputDir } else { Split-Path $in -Parent }
+    $out = Join-Path $dir ([IO.Path]::GetFileNameWithoutExtension($in) + $extension)
+  }
+  $out = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($out)
+  if ($out -eq $in) { throw "Output would overwrite the input: $out" }
+  return $out
+}
+
+function Assert-Writable([string[]] $files) {
+  foreach ($f in $files) {
+    if ((Test-Path -LiteralPath $f) -and -not $Force) { throw "Output exists (use -Force to overwrite): $f" }
+    $dir = Split-Path $f -Parent
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+  }
+}
+
 $inputs = @()
 foreach ($p in $Path) {
   # Literal first: names like "[Group]Show[1080p].mkv" are wildcard patterns for -Path
@@ -162,12 +241,14 @@ foreach ($p in $Path) {
   $inputs += $resolved | ForEach-Object { $_.ProviderPath }
 }
 if ($Output -and $inputs.Count -gt 1) { throw '-Output can only be used with a single input file, use -OutputDir instead.' }
+if ($ThumbnailsOnly -and $NoThumbnails) { throw '-ThumbnailsOnly and -NoThumbnails cannot be combined.' }
 
 $failed = @()
 foreach ($in in $inputs) {
   # An error in one file must not abort a batch run: skip the file and report it at the end
   try {
-    $streams = Get-Streams $in
+    $probe = Get-Probe $in
+    $streams = $probe.streams
     $video = @($streams | Where-Object { $_.codec_type -eq 'video' -and $_.disposition.attached_pic -ne 1 })
     $audio = @($streams | Where-Object { $_.codec_type -eq 'audio' })
     $subs = @($streams | Where-Object { $_.codec_type -eq 'subtitle' })
@@ -178,6 +259,28 @@ foreach ($in in $inputs) {
       continue
     }
     if ($video.Count -eq 0) { throw 'No video stream.' }
+    $v = $video[0]
+
+    # Length of the part that is converted
+    $seconds = $probe.duration - $Start
+    if ($Duration -gt 0 -and $Duration -lt $seconds) { $seconds = $Duration }
+    if ($seconds -le 0) { throw "-Start is beyond the end of the video ($($probe.duration) s)." }
+
+    if ($ThumbnailsOnly) {
+      $sprite = Resolve-OutputPath $in '.thumbs.jpg'
+      $thumbFilter = Get-ThumbnailFilter $seconds
+      if (-not $thumbFilter) { throw 'No thumbnails generated.' }
+      Assert-Writable @($sprite)
+      Write-Host "  thumbnails: $sprite"
+      # Input seeking is fine here: there are no subtitles that need the original timestamps
+      $ffArgs = @('-hide_banner', '-loglevel', 'error', '-stats', '-y')
+      if ($Start -gt 0) { $ffArgs += '-ss', $Start }
+      if ($Duration -gt 0) { $ffArgs += '-t', $Duration }
+      $ffArgs += '-i', $in, '-filter_complex', "[0:$($v.index)]$thumbFilter[t]"
+      $ffArgs += Get-SpriteOutputArgs $sprite
+      Invoke-Ffmpeg $ffArgs @($sprite)
+      continue
+    }
 
     $selectedAudio = Select-Stream $audio 'audio' $AudioTrack $AudioLanguage $false
     $selectedSub = $null
@@ -185,21 +288,16 @@ foreach ($in in $inputs) {
       $selectedSub = Select-Stream $subs 'subtitle' $SubtitleTrack $SubtitleLanguage $true
     }
 
-    if ($Output) {
-      $out = $Output
-    } else {
-      $dir = if ($OutputDir) { $OutputDir } else { Split-Path $in -Parent }
-      $out = Join-Path $dir ([IO.Path]::GetFileNameWithoutExtension($in) + '.mp4')
+    $out = Resolve-OutputPath $in '.mp4'
+    $sprite = $null
+    $thumbFilter = $null
+    if (-not $NoThumbnails) {
+      $thumbFilter = Get-ThumbnailFilter $seconds
+      if ($thumbFilter) { $sprite = Get-SpritePath $out }
     }
-    $out = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($out)
-    if ($out -eq $in) { throw "Output would overwrite the input: $out" }
-    if ((Test-Path -LiteralPath $out) -and -not $Force) {
-      throw "Output exists (use -Force to overwrite): $out"
-    }
-    $outDir = Split-Path $out -Parent
-    if (-not (Test-Path -LiteralPath $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
+    $outputs = @($out, $sprite) | Where-Object { $_ }
+    Assert-Writable $outputs
 
-    $v = $video[0]
     $ffArgs = @('-hide_banner', '-loglevel', 'error', '-stats', '-y', '-i', $in)
     if ($Start -gt 0) {
       # Output seeking keeps the original timestamps for the subtitle renderer
@@ -207,16 +305,30 @@ foreach ($in in $inputs) {
     }
     if ($Duration -gt 0) { $ffArgs += '-t', $Duration }
 
+    # The thumbnail branch is split off before the subtitles are burned in (unreadable at thumbnail size).
+    # Output seeking does not apply to the filter graph, so that branch is trimmed to the same segment.
+    $src = "[0:$($v.index)]"
+    $thumbBranch = ''
+    if ($thumbFilter) {
+      $trim = ''
+      if ($Start -gt 0 -or $Duration -gt 0) {
+        $trim = "trim=start=$Start"
+        if ($Duration -gt 0) { $trim += ":duration=$Duration" }
+        $trim += ',setpts=PTS-STARTPTS,'
+      }
+      $thumbBranch = ";[th]$trim$thumbFilter[t]"
+    }
     if ($selectedSub -and $bitmapSubtitleCodecs -contains $selectedSub.codec_name) {
-      $graph = "[0:$($v.index)][0:$($selectedSub.index)]overlay=eof_action=pass,format=yuv420p[v]"
-      $ffArgs += '-filter_complex', $graph, '-map', '[v]'
+      $overlay = "[0:$($selectedSub.index)]overlay=eof_action=pass,format=yuv420p[v]"
+      $graph = if ($thumbFilter) { "${src}split[main][th];[main]$overlay" } else { "$src$overlay" }
     } elseif ($selectedSub) {
       # si = index among the subtitle streams; libass also loads the fonts attached to the file
-      $filter = "format=yuv420p,subtitles=filename=$(ConvertTo-FilterValue $in):si=$($selectedSub.typeIndex)"
-      $ffArgs += '-filter_complex', "[0:$($v.index)]$filter[v]", '-map', '[v]'
+      $subtitles = "subtitles=filename=$(ConvertTo-FilterValue $in):si=$($selectedSub.typeIndex)[v]"
+      $graph = if ($thumbFilter) { "${src}format=yuv420p,split[main][th];[main]$subtitles" } else { "${src}format=yuv420p,$subtitles" }
     } else {
-      $ffArgs += '-map', "0:$($v.index)", '-vf', 'format=yuv420p'
+      $graph = if ($thumbFilter) { "${src}format=yuv420p,split[v][th]" } else { "${src}format=yuv420p[v]" }
     }
+    $ffArgs += '-filter_complex', ($graph + $thumbBranch), '-map', '[v]'
 
     $ffArgs += '-c:v', 'libx264', '-preset', $Preset, '-crf', $Crf, '-profile:v', 'high'
     if ($Tune) { $ffArgs += '-tune', $Tune }
@@ -230,21 +342,15 @@ foreach ($in in $inputs) {
       }
     }
     $ffArgs += '-map_chapters', '0', '-movflags', '+faststart', $out
+    if ($sprite) { $ffArgs += Get-SpriteOutputArgs $sprite }
 
-    Write-Host "  video:    $(Format-Stream $v) -> h264 8-bit, crf $Crf, preset $Preset$(if ($Tune) { ", tune $Tune" })"
-    if ($selectedAudio) { Write-Host "  audio:    $(Format-Stream $selectedAudio)" } else { Write-Host '  audio:    none' }
-    if ($selectedSub) { Write-Host "  subtitle: $(Format-Stream $selectedSub) (burned in)" } else { Write-Host '  subtitle: none' }
-    Write-Host "  output:   $out"
+    Write-Host "  video:      $(Format-Stream $v) -> h264 8-bit, crf $Crf, preset $Preset$(if ($Tune) { ", tune $Tune" })"
+    if ($selectedAudio) { Write-Host "  audio:      $(Format-Stream $selectedAudio)" } else { Write-Host '  audio:      none' }
+    if ($selectedSub) { Write-Host "  subtitle:   $(Format-Stream $selectedSub) (burned in)" } else { Write-Host '  subtitle:   none' }
+    Write-Host "  output:     $out"
+    if ($sprite) { Write-Host "  thumbnails: $sprite" }
 
-    # ffmpeg writes progress to stderr; Windows PowerShell must not treat that as an error
-    $ErrorActionPreference = 'Continue'
-    & ffmpeg @ffArgs
-    $exitCode = $LASTEXITCODE
-    $ErrorActionPreference = 'Stop'
-    if ($exitCode -ne 0) {
-      Remove-Item -LiteralPath $out -ErrorAction SilentlyContinue
-      throw "ffmpeg failed (exit code $exitCode)."
-    }
+    Invoke-Ffmpeg $ffArgs $outputs
   } catch {
     Write-Warning "Skipped '$in': $($_.Exception.Message)"
     $failed += $in
