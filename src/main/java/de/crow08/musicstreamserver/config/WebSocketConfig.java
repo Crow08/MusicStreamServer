@@ -35,6 +35,7 @@ public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfi
     // "/queue" is used for messages to a single user, e.g. "/user/queue/errors"
     config.enableSimpleBroker("/topic", "/queue");
     config.setApplicationDestinationPrefixes("/app");
+    config.configureBrokerChannel().interceptors(new ClockSyncInterceptors.Outbound());
   }
 
   @Override

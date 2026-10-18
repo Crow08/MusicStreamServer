@@ -38,7 +38,9 @@ public class WebSocketAuthConfig implements WebSocketMessageBrokerConfigurer {
 
   @Override
   public void configureClientInboundChannel(final ChannelRegistration registration) {
-    registration.interceptors(new WebSocketAuthInterceptor(this.webSocketSessionController),
+    // clock sync first: it records the receive time of commands
+    registration.interceptors(new ClockSyncInterceptors.Inbound(),
+        new WebSocketAuthInterceptor(this.webSocketSessionController),
         new SessionMembershipInterceptor(this.sessionRepository, this.messagingTemplate));
   }
 
