@@ -28,17 +28,12 @@ import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueAndHistor
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateUserStatusCommand;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessageSendingOperations;
-import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
@@ -65,21 +60,17 @@ public class PlayerControlsController {
   private final WebSocketSessionController webSocketSessionController;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  private SimpMessageSendingOperations messagingTemplate;
-
   @Autowired
   public PlayerControlsController(SessionRepository sessionRepository,
                                   SessionController sessionController,
                                   UserRepository userRepository,
                                   MediaRepository mediaRepository,
-                                  WebSocketSessionController webSocketSessionController,
-                                  SimpMessageSendingOperations messagingTemplate) {
+                                  WebSocketSessionController webSocketSessionController) {
     this.sessionRepository = sessionRepository;
     this.sessionController = sessionController;
     this.userRepository = userRepository;
     this.mediaRepository = mediaRepository;
     this.webSocketSessionController = webSocketSessionController;
-    this.messagingTemplate = messagingTemplate;
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/start")
@@ -268,7 +259,7 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/skipTo/{mediaId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command skipTo(@Payload Message msg, @DestinationVariable long sessionId, @DestinationVariable int mediaId, String message) throws Exception {
+  public Command skipTo(@DestinationVariable long sessionId, @DestinationVariable int mediaId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
 
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
@@ -286,21 +277,8 @@ public class PlayerControlsController {
           currentMedia = queue.getCurrentMedia();
         } while (currentMedia != null && currentMedia.getId() != mediaId);
       }
+      return setMedia(session);
     }
-    UpdateQueueAndHistoryCommand updateQueueAndHistoryCommand = new UpdateQueueAndHistoryCommand(getMediaFromQueue(session), getMediaFromHistory(session));
-    this.messagingTemplate.convertAndSend("/topic/sessions/" + sessionId, updateQueueAndHistoryCommand, createHeaders(msg));
-    return setMedia(session);
-  }
-
-  private MessageHeaders createHeaders(Message msg) {
-    MessageHeaders headers = msg.getHeaders();
-    String msgSessionId = SimpMessageHeaderAccessor.getSessionId(headers);
-    SimpMessageHeaderAccessor headerAccessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
-    if (msgSessionId != null) {
-      headerAccessor.setSessionId(msgSessionId);
-    }
-    headerAccessor.setLeaveMutable(true);
-    return headerAccessor.getMessageHeaders();
   }
 
 
@@ -500,18 +478,15 @@ public class PlayerControlsController {
 
   @MessageMapping("/sessions/{sessionId}/commands/playMediaNow")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command playMediaNow(@Payload Message msg, @DestinationVariable long sessionId, String message) throws Exception {
+  public Command playMediaNow(@DestinationVariable long sessionId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     Media media = findMedia(objectMapper.readTree(message)).orElseThrow(() -> new Exception("Media not found"));
     synchronized (session.getLock()) {
       session.getQueue().getQueuedMedia().add(0, media);
       sessionController.nextMedia(session);
+      return setMedia(session);
     }
-    // the clients can not derive the new queue and history from SetMedia, since the media was not in their queue
-    this.messagingTemplate.convertAndSend("/topic/sessions/" + sessionId,
-        new UpdateQueueAndHistoryCommand(getMediaFromQueue(session), getMediaFromHistory(session)), createHeaders(msg));
-    return setMedia(session);
   }
 
   /**
@@ -526,13 +501,17 @@ public class PlayerControlsController {
     return new ErrorCommand(reason, destination);
   }
 
+  /**
+   * Announces the current media. The queue and history are sent along: clients can not derive them from the media,
+   * which may occur several times in the queue and history.
+   */
   private Command setMedia(Session session) {
     synchronized (session.getLock()) {
       Optional<Media> currentMedia = sessionController.getCurrentMedia(session);
       if (currentMedia.isPresent()) {
         MinimalMedia minimalMedia = new MinimalMedia(currentMedia.get().getId(), currentMedia.get().getTitle(), currentMedia.get().getType());
         sessionController.enterSyncState(session);
-        return new SetMediaCommand(minimalMedia);
+        return new SetMediaCommand(minimalMedia, getMediaFromQueue(session), getMediaFromHistory(session));
       }
       return new StopCommand();
     }
