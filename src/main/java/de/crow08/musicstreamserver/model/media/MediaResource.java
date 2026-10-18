@@ -16,6 +16,7 @@ import de.crow08.musicstreamserver.model.playlists.Playlist;
 import de.crow08.musicstreamserver.model.playlists.PlaylistRepository;
 import de.crow08.musicstreamserver.model.tag.Tag;
 import de.crow08.musicstreamserver.model.tag.TagRepository;
+import de.crow08.musicstreamserver.utils.Mp4ChapterReader;
 import de.crow08.musicstreamserver.utils.TrimmedAudioInputStream;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotReadException;
@@ -360,6 +361,25 @@ public class MediaResource {
   public @ResponseBody Optional<Video> getVideo(@PathVariable Long id) {
     Optional<Video> byId = videoRepository.findById(id);
     return byId;
+  }
+
+  /** Chapters of the video file, an empty list if it has none (e.g. a song or a file without chapters). */
+  @GetMapping("/video/{id}/chapters")
+  public ResponseEntity<List<Mp4ChapterReader.Chapter>> getVideoChapters(@PathVariable Long id) {
+    Optional<Video> video = videoRepository.findById(id);
+    if (video.isEmpty()) {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+    Path file = Paths.get(storagePath.toString(), video.get().getUri());
+    if (!Files.isReadable(file)) {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+    try {
+      return ResponseEntity.ok(Mp4ChapterReader.read(file));
+    } catch (IOException e) {
+      // chapters are optional: a file that cannot be parsed just has none
+      return ResponseEntity.ok(List.of());
+    }
   }
 
   @GetMapping(path = "/getSongsByKeyword/{keyword}")
