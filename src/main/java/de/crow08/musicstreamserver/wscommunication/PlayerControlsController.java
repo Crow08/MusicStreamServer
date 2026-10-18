@@ -510,7 +510,9 @@ public class PlayerControlsController {
         sessionController.enterSyncState(session);
         return new SetMediaCommand(minimalMedia, getMediaFromQueue(session), getMediaFromHistory(session));
       }
-      return new StopCommand();
+      // the queue ended: nothing is playing any more, a running sync round must not start playback
+      sessionController.stop(session);
+      return new StopCommand(getMediaFromQueue(session), getMediaFromHistory(session));
     }
   }
 
