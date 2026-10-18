@@ -16,8 +16,10 @@ import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -195,6 +197,30 @@ public class SessionController {
       } else {
         queue.setCurrentMedia(null);
       }
+    }
+  }
+
+  /**
+   * Makes the media at the given index the current media: the media before it end up in the history, the media after
+   * it in the queue.
+   *
+   * @param session for which to change the current media
+   * @param index   index in the combined list of history, current media and queue
+   */
+  public void skipTo(Session session, int index) {
+    synchronized (session.getLock()) {
+      Queue queue = session.getQueue();
+      session.setMediaStarted(null);
+      session.setSavedProgression(Duration.ZERO);
+      List<Media> all = new ArrayList<>(queue.getHistoryMedia());
+      // the slot of the current media exists in the index even without a current media
+      all.add(queue.getCurrentMedia());
+      all.addAll(queue.getQueuedMedia());
+      queue.getHistoryMedia().clear();
+      queue.getQueuedMedia().clear();
+      all.subList(0, index).stream().filter(Objects::nonNull).forEach(queue.getHistoryMedia()::add);
+      all.subList(index + 1, all.size()).stream().filter(Objects::nonNull).forEach(queue.getQueuedMedia()::add);
+      queue.setCurrentMedia(all.get(index));
     }
   }
 

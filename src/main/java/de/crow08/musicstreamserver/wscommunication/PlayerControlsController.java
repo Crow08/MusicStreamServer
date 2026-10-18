@@ -257,26 +257,23 @@ public class PlayerControlsController {
     return new UpdateQueueAndHistoryCommand(getMediaFromQueue(session), getMediaFromHistory(session));
   }
 
-  @MessageMapping("/sessions/{sessionId}/commands/skipTo/{mediaId}")
+  /**
+   * Jumps to a media in the history or queue. The index refers to the client's view, which may be outdated: the media
+   * is identified by its id, the index selects one of several occurrences.
+   */
+  @MessageMapping("/sessions/{sessionId}/commands/skipTo/{requestedIndex}/{mediaId}")
   @SendTo("/topic/sessions/{sessionId}")
-  public Command skipTo(@DestinationVariable long sessionId, @DestinationVariable int mediaId, String message) throws Exception {
+  public Command skipTo(@DestinationVariable long sessionId, @DestinationVariable int requestedIndex,
+                        @DestinationVariable long mediaId, String message) throws Exception {
     System.out.println("Received: " + sessionId + " - " + message);
 
     Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
     synchronized (session.getLock()) {
-      Queue queue = session.getQueue();
-      Media currentMedia;
-      if (queue.getQueuedMedia().stream().anyMatch(media -> media.getId() == mediaId)) {
-        do {
-          sessionController.nextMedia(session);
-          currentMedia = queue.getCurrentMedia();
-        } while (currentMedia != null && currentMedia.getId() != mediaId);
-      } else if (queue.getHistoryMedia().stream().anyMatch(media -> media.getId() == mediaId)) {
-        do {
-          sessionController.previousMedia(session);
-          currentMedia = queue.getCurrentMedia();
-        } while (currentMedia != null && currentMedia.getId() != mediaId);
+      int index = findInHistoryAndQueue(session.getQueue(), requestedIndex, mediaId);
+      if (index < 0) {
+        throw new Exception(QUEUE_CHANGED);
       }
+      sessionController.skipTo(session, index);
       return setMedia(session);
     }
   }
