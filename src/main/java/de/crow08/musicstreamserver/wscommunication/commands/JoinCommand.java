@@ -3,6 +3,7 @@ package de.crow08.musicstreamserver.wscommunication.commands;
 import de.crow08.musicstreamserver.model.media.MinimalMedia;
 import de.crow08.musicstreamserver.model.users.User;
 import de.crow08.musicstreamserver.sessions.Session;
+import de.crow08.musicstreamserver.sessions.UserStatus;
 
 import java.util.List;
 
@@ -13,6 +14,7 @@ public class JoinCommand extends Command {
   List<MinimalMedia> queue;
   List<MinimalMedia> history;
   List<User> sessionUsers;
+  List<UserStatus> userStatuses;
   Session.SessionState sessionState;
   boolean loopMode;
   long startServerTime;
@@ -25,7 +27,8 @@ public class JoinCommand extends Command {
   }
 
   public JoinCommand(long userId, MinimalMedia currentMedia, List<MinimalMedia> queue, List<MinimalMedia> history,
-                     Session.SessionState sessionState, boolean loopMode, long startServerTime, long startMediaTime, List<User> sessionUsers) {
+                     Session.SessionState sessionState, boolean loopMode, long startServerTime, long startMediaTime, List<User> sessionUsers,
+                     List<UserStatus> userStatuses) {
     super("Join");
     this.userId = userId;
     this.currentMedia = currentMedia;
@@ -36,6 +39,7 @@ public class JoinCommand extends Command {
     this.startServerTime = startServerTime;
     this.startMediaTime = startMediaTime;
     this.sessionUsers = sessionUsers;
+    this.userStatuses = userStatuses;
   }
 
   public long getUserId() {
@@ -116,5 +120,13 @@ public class JoinCommand extends Command {
 
   public void setSessionUsers(List<User> sessionUsers) {
     this.sessionUsers = sessionUsers;
+  }
+
+  public List<UserStatus> getUserStatuses() {
+    return userStatuses;
+  }
+
+  public void setUserStatuses(List<UserStatus> userStatuses) {
+    this.userStatuses = userStatuses;
   }
 }

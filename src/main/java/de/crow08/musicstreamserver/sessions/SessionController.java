@@ -362,10 +362,12 @@ public class SessionController {
   }
 
   public void removeUserFromSession(User oldUser, Session session) {
-    session.getUsers().remove(oldUser);
-    sessionRepository.save(session);
-    // the removed user might have been the last one the current sync round was waiting for
     synchronized (session.getLock()) {
+      // removed together, so a status report checking the membership under the lock can not bring the status back
+      session.getUsers().remove(oldUser);
+      session.removeUserStatus(oldUser.getId());
+      sessionRepository.save(session);
+      // the removed user might have been the last one the current sync round was waiting for
       if (isInSyncState(session) && session.getSessionUserSynchronization().allReady(getUserIds(session))) {
         sendToSession(session, finishSync(session));
       }

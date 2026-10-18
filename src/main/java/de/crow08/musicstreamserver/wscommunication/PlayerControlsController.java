@@ -11,6 +11,7 @@ import de.crow08.musicstreamserver.model.users.UserRepository;
 import de.crow08.musicstreamserver.sessions.Session;
 import de.crow08.musicstreamserver.sessions.SessionController;
 import de.crow08.musicstreamserver.sessions.SessionRepository;
+import de.crow08.musicstreamserver.sessions.UserStatus;
 import de.crow08.musicstreamserver.wscommunication.commands.Command;
 import de.crow08.musicstreamserver.wscommunication.commands.ErrorCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.JoinCommand;
@@ -25,6 +26,7 @@ import de.crow08.musicstreamserver.wscommunication.commands.UpdateHistoryCommand
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateLoopModeCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueAndHistoryCommand;
 import de.crow08.musicstreamserver.wscommunication.commands.UpdateQueueCommand;
+import de.crow08.musicstreamserver.wscommunication.commands.UpdateUserStatusCommand;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
@@ -179,7 +181,8 @@ public class PlayerControlsController {
         sessionController.addUserToSession(connectedUser.get(), session);
         System.out.println("start offset:" + startOffset);
         return new JoinCommand(userId, minMedia, getMediaFromQueue(session), getMediaFromHistory(session),
-            session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers());
+            session.getSessionState(), session.isLoopMode(), startTime, startOffset, session.getUsers(),
+            new ArrayList<>(session.getUserStatuses()));
       }
     }
     return new NopCommand();
@@ -404,6 +407,29 @@ public class PlayerControlsController {
       return sessionController.userIsReady(connectedUser.get(), session.get(), mediaId).orElseGet(NopCommand::new);
     }
     return new NopCommand();
+  }
+
+  /**
+   * Stores the playback status reported by a client (loading/ready, latency, drift) and shows it to the session.
+   * Reported regularly while playing, so the message is not logged.
+   */
+  @MessageMapping("/sessions/{sessionId}/commands/status/{userId}")
+  @SendTo("/topic/sessions/{sessionId}")
+  public Command status(@DestinationVariable long sessionId, @DestinationVariable long userId, Principal principal,
+                        String message) throws Exception {
+    Session session = sessionRepository.findById(sessionId).orElseThrow(() -> new Exception("Session not found"));
+    if (getConnectedUser(principal, userId).isEmpty()) {
+      return new NopCommand();
+    }
+    UserStatus status = UserStatus.fromReport(userId, objectMapper.readValue(message, UserStatus.class));
+    synchronized (session.getLock()) {
+      // a late report must not bring back the status of a user that already left the session
+      if (session.getUsers().stream().noneMatch(user -> user.getId() == userId)) {
+        return new NopCommand();
+      }
+      session.setUserStatus(status);
+    }
+    return new UpdateUserStatusCommand(status);
   }
 
   @MessageMapping("/sessions/{sessionId}/commands/addMediaToQueue")

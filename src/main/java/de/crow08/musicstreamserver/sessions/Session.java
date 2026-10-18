@@ -7,7 +7,10 @@ import de.crow08.musicstreamserver.model.users.User;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Session {
@@ -18,6 +21,8 @@ public class Session {
    */
   private final Object lock = new Object();
   private final SessionUserSynchronization sessionUserSynchronization = new SessionUserSynchronization();
+  /** Playback status reported by the clients, by user id. */
+  private final Map<Long, UserStatus> userStatuses = new ConcurrentHashMap<>();
   private long id;
   private List<User> users;
   private String name;
@@ -61,6 +66,19 @@ public class Session {
 
   public void setUsers(List<User> users) {
     this.users = users;
+  }
+
+  @JsonIgnore
+  public Collection<UserStatus> getUserStatuses() {
+    return userStatuses.values();
+  }
+
+  public void setUserStatus(UserStatus userStatus) {
+    userStatuses.put(userStatus.getUserId(), userStatus);
+  }
+
+  public void removeUserStatus(long userId) {
+    userStatuses.remove(userId);
   }
 
   public SessionUserSynchronization getSessionUserSynchronization() {
