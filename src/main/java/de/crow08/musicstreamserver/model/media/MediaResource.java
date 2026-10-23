@@ -272,6 +272,8 @@ public class MediaResource {
 
       // Create new song
       Song song = new Song(songNode.get("title").asText(), songNode.get("uri").asText());
+      // A Spotify song is played by the Spotify player of each client, its uri is a Spotify uri and no file
+      song.setSpotify(songNode.path("spotify").asBoolean(false));
       // Add artist
       song.setArtist(artist.orElse(null));
       // Add album

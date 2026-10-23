@@ -79,6 +79,8 @@ public class UserStatus {
     /** The media is loading or buffering: the client can not play right now. */
     LOADING,
     /** The media is loaded and can be played. */
-    READY
+    READY,
+    /** The media can not be played by this client, e.g. a Spotify song without a connected Premium account. */
+    UNAVAILABLE
   }
 }
