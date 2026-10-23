@@ -19,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.resource.PathResourceResolver;
 import org.springframework.web.servlet.resource.ResourceResolver;
 import org.springframework.web.servlet.resource.ResourceResolverChain;
 
@@ -35,16 +36,14 @@ public class SecurityConfig implements WebMvcConfigurer {
 
   private final UserDetailsService userDetailsService;
   private final String clientStoragePath;
-  @Value("${client.host}")
-  private String host;
-  @Value("${client.port}")
-  private int port;
+  private final ClientProperties clientProperties;
 
   @Autowired
-  public SecurityConfig(MediaRepository mediaRepository, @Qualifier("authenticatedUserService") UserDetailsService userDetailsService, @Value("${client.storage-path}") String clientStoragePath) {
+  public SecurityConfig(MediaRepository mediaRepository, @Qualifier("authenticatedUserService") UserDetailsService userDetailsService, @Value("${client.storage-path}") String clientStoragePath, ClientProperties clientProperties) {
     this.mediaRepository = mediaRepository;
     this.userDetailsService = userDetailsService;
     this.clientStoragePath = clientStoragePath;
+    this.clientProperties = clientProperties;
   }
 
   @Bean
@@ -70,7 +69,7 @@ public class SecurityConfig implements WebMvcConfigurer {
   @Override
   public void addCorsMappings(CorsRegistry registry) {
     registry.addMapping("/**")
-        .allowedOrigins("http://" + host + ":" + port)
+        .allowedOrigins(clientProperties.getAllowedOrigin())
         .allowedMethods("GET", "POST", "PUT", "DELETE", "HEAD");
   }
 
@@ -81,6 +80,29 @@ public class SecurityConfig implements WebMvcConfigurer {
     addMediaResourceHandler(registry, "/api/v1/media/thumbnails/**", media -> media.getType() == MediaType.VIDEO
         ? Optional.of(media.getUri().replaceFirst("\\.[^./\\\\]*$", "") + ".thumbs.jpg")
         : Optional.empty());
+    // The client is served by this server as well (copy of its build in static/)
+    registry
+        .addResourceHandler("/**")
+        .addResourceLocations("classpath:/static/")
+        .resourceChain(true)
+        .addResolver(new ClientResourceResolver());
+  }
+
+  /**
+   * Serves the files of the client. Paths that are no file belong to the router of the client (e.g. a reload on
+   * /sessions/1/lobby) and get its index.html; unknown API and WebSocket paths and missing files are 404.
+   */
+  private static class ClientResourceResolver extends PathResourceResolver {
+    @Override
+    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+      Resource resource = super.getResource(resourcePath, location);
+      if (resource != null) {
+        return resource;
+      }
+      boolean apiOrWebSocket = resourcePath.matches("(api|ws)(/.*)?");
+      boolean file = resourcePath.substring(resourcePath.lastIndexOf('/') + 1).contains(".");
+      return apiOrWebSocket || file ? null : super.getResource("index.html", location);
+    }
   }
 
   /**

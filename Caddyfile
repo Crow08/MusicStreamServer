@@ -1,0 +1,6 @@
+# TLS proxy in front of the server: one origin, the server serves the client (static/), /api and /ws.
+# Ports 80 and 443 have to be forwarded to this machine (HTTP-01 challenge). Run: caddy run --config Caddyfile
+# MUSICSTREAM_UPSTREAM selects the server, default is the prod profile port.
+musicstreamparrot.duckdns.org {
+	reverse_proxy {$MUSICSTREAM_UPSTREAM:localhost:8080}
+}

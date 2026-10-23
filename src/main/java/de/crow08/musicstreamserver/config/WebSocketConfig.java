@@ -2,7 +2,6 @@ package de.crow08.musicstreamserver.config;
 
 import de.crow08.musicstreamserver.wscommunication.WebSocketSessionController;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.security.config.annotation.web.messaging.MessageSecurityMetadataSourceRegistry;
@@ -20,14 +19,12 @@ import org.springframework.web.socket.handler.WebSocketHandlerDecoratorFactory;
 @EnableWebSocketMessageBroker
 public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfigurer {
   private final WebSocketSessionController webSocketSessionController;
-  @Value("${client.host}")
-  private String host;
-  @Value("${client.port}")
-  private int port;
+  private final ClientProperties clientProperties;
 
   @Autowired
-  public WebSocketConfig(final WebSocketSessionController webSocketSessionController) {
+  public WebSocketConfig(final WebSocketSessionController webSocketSessionController, final ClientProperties clientProperties) {
     this.webSocketSessionController = webSocketSessionController;
+    this.clientProperties = clientProperties;
   }
 
   @Override
@@ -46,7 +43,7 @@ public class WebSocketConfig extends AbstractSecurityWebSocketMessageBrokerConfi
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
     registry.addEndpoint("/ws")
-        .setAllowedOrigins("http://" + host + ":" + port);
+        .setAllowedOrigins(clientProperties.getAllowedOrigin());
   }
 
   @Override
